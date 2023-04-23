@@ -7,8 +7,11 @@ import (
 	"pack/packages/Structs"
 	"pack/packages/Tools"
 	"sort"
+	"strconv"
 	"unsafe"
 )
+
+var mds []Structs.MountedDisk
 
 func CreateDisk(path string, tam int) bool {
 	if !Tools.Exists(path) {
@@ -18,6 +21,7 @@ func CreateDisk(path string, tam int) bool {
 			if err != nil {
 				fmt.Println("ERROR: No se pudo crear el disco")
 			}
+			// defer myfile.Close()
 			/* Lleno el archivo con caracteres nulos para simular el tamaño */
 			var buffer [1024]byte
 			for i := 0; i < tam/1024; i++ {
@@ -112,6 +116,40 @@ func isLogPart(path string, name string) bool {
 	return false
 }
 
+func getPartByName(path string, name string) Structs.Partition {
+	m := Structs.GetMBR(path)
+	if string(m.Mbr_partition_1.Part_name[:]) == name {
+		return m.Mbr_partition_1
+	} else if string(m.Mbr_partition_2.Part_name[:]) == name {
+		return m.Mbr_partition_2
+	} else if string(m.Mbr_partition_3.Part_name[:]) == name {
+		return m.Mbr_partition_3
+	} else if string(m.Mbr_partition_4.Part_name[:]) == name {
+		return m.Mbr_partition_4
+	}
+	return Structs.RPV()
+}
+
+func getLogPartByName(path string, name string) Structs.EBR {
+	var ep = GetExtPart(path)
+	if ep.Part_s > 0 {
+		var start = Structs.GetEBR(path, ep.Part_start)
+		if start.Part_next > 0 {
+			actual := Structs.GetEBR(path, start.Part_next)
+			for actual.Part_next != -1 {
+				if string(actual.Part_name[:]) == name {
+					return actual
+				}
+				actual = Structs.GetEBR(path, actual.Part_next)
+			}
+			if string(actual.Part_name[:]) == name {
+				return actual
+			}
+		}
+	}
+	return Structs.REBRV()
+}
+
 // Comprueba si existe una particion
 // Recibe la ruta del disco y el nombre de la particion
 func partExists(path string, name string) bool {
@@ -173,7 +211,7 @@ func isDiskEmpty(path string) bool {
 	return true
 }
 
-func addPartition(m Structs.MBR, p Structs.Partition) {
+func addPartition(m *Structs.MBR, p Structs.Partition) {
 	if m.Mbr_partition_1.Part_s < 0 {
 		m.Mbr_partition_1 = p
 	} else if m.Mbr_partition_2.Part_s < 0 {
@@ -185,7 +223,35 @@ func addPartition(m Structs.MBR, p Structs.Partition) {
 	}
 }
 
-func sortPartitions(m Structs.MBR) {
+func addLogPartition(path string, prevSpace int, nuevo *Structs.EBR) {
+	ep := GetExtPart(path)
+	start := Structs.GetEBR(path, ep.Part_start)
+	prev := Structs.REBRV()
+
+	if prevSpace != -1 {
+		prev = Structs.GetEBR(path, int32(prevSpace))
+		if prev.Part_next != -1 {
+			nxt := Structs.GetEBR(path, prev.Part_next)
+			prev.Part_next = nuevo.Part_start
+			nuevo.Part_next = nxt.Part_start
+			Structs.AddEBR(path, prev.Part_start, prev)
+			Structs.AddEBR(path, nuevo.Part_start, *nuevo)
+		} else {
+			prev.Part_next = nuevo.Part_start
+			Structs.AddEBR(path, prev.Part_start, prev)
+			Structs.AddEBR(path, nuevo.Part_start, *nuevo)
+		}
+	} else {
+		if start.Part_next != -1 {
+			nuevo.Part_next = Structs.GetEBR(path, start.Part_next).Part_start
+		}
+		start.Part_next = nuevo.Part_start
+		Structs.AddEBR(path, start.Part_start, start)
+		Structs.AddEBR(path, nuevo.Part_start, *nuevo)
+	}
+}
+
+func sortPartitions(m *Structs.MBR) {
 	var sizes []int
 	var parts []Structs.Partition
 	var nuevo []Structs.Partition
@@ -306,7 +372,7 @@ func BlockSize(path string, m Structs.MBR) []Structs.SpaceSize {
 func ExtBlockSize(path string) []Structs.SpaceSize {
 	var v []Structs.SpaceSize
 	ep := GetExtPart(path) //Particion extendida
-	inicio := ep.Part_start + int32(unsafe.Sizeof(ep)) + 1
+	inicio := ep.Part_start + int32(unsafe.Sizeof(Structs.EBR{})) + 1
 	e := Structs.GetEBR(path, ep.Part_start) //EBR inicial
 	endSpace := 0
 
@@ -340,21 +406,21 @@ func ExtBlockSize(path string) []Structs.SpaceSize {
 			v = append(v, Structs.SpaceSize{Part_start: int32(endSpace + 1), Part_s: int32(math.Abs(float64(ep.Part_s) - float64(endSpace+1))), In_use: 'n', Type: '0'})
 		}
 	} else {
-		v = append(v, Structs.SpaceSize{Part_start: inicio, Part_s: ep.Part_s - inicio, In_use: 'n', Type: '0'})
+		v = append(v, Structs.SpaceSize{Part_start: inicio, Part_s: ep.Part_s - inicio, In_use: 'n', Type: 'l'})
 	}
 	return v
 }
 
 // Asigna la particion en la memoria a bloques según el algoritmo de primer ajuste
 // Recibe la ruta del disco y la particion
-func firstFit(path string, p Structs.Partition) bool {
+func firstFit(path string, p *Structs.Partition) bool {
 	m := Structs.GetMBR(path)
 	ss := BlockSize(path, m)
 	for _, s := range ss {
 		if (p.Part_s <= s.Part_s) && (s.In_use != 's') {
 			p.Part_start = s.Part_start
-			addPartition(m, p)
-			sortPartitions(m)
+			addPartition(&m, *p)
+			sortPartitions(&m)
 			Structs.AddMBR(path, m)
 			return true
 		}
@@ -364,7 +430,7 @@ func firstFit(path string, p Structs.Partition) bool {
 
 // Asigna la particion en la memoria a bloques según el algoritmo de mejor ajuste
 // Recibe la ruta del disco y la particion
-func bestFit(path string, p Structs.Partition) bool {
+func bestFit(path string, p *Structs.Partition) bool {
 	m := Structs.GetMBR(path) //Obtengo el MBR del disco
 	ss := BlockSize(path, m)  //Obtengo el bloque de tamaños
 	bestFitIdx := -1
@@ -379,9 +445,10 @@ func bestFit(path string, p Structs.Partition) bool {
 	}
 	if bestFitIdx != -1 {
 		p.Part_start = ss[bestFitIdx].Part_start
-		addPartition(m, p)
-		sortPartitions(m)
+		addPartition(&m, *p)
+		sortPartitions(&m)
 		Structs.AddMBR(path, m)
+		// Structs.ReadMBR(path)
 		return true
 	}
 	return false
@@ -389,7 +456,7 @@ func bestFit(path string, p Structs.Partition) bool {
 
 // Asigna la particion en la memoria a bloques según el algoritmo de peor ajuste
 // Recibe la ruta del disco y la particion
-func worstFit(path string, p Structs.Partition) bool {
+func worstFit(path string, p *Structs.Partition) bool {
 	m := Structs.GetMBR(path) //Obtengo el MBR del disco
 	ss := BlockSize(path, m)  //Obtengo el bloque de tamaños
 	worstFitIdx := -1
@@ -404,8 +471,8 @@ func worstFit(path string, p Structs.Partition) bool {
 	}
 	if worstFitIdx != -1 {
 		p.Part_start = ss[worstFitIdx].Part_start
-		addPartition(m, p)
-		sortPartitions(m)
+		addPartition(&m, *p)
+		sortPartitions(&m)
 		Structs.AddMBR(path, m)
 		return true
 	}
@@ -414,13 +481,14 @@ func worstFit(path string, p Structs.Partition) bool {
 
 // Asigna la particion en la memoria a bloques según el algoritmo de primer ajuste para la particion extendida
 // Recibe la ruta del disco y la particion
-func extFirstFit(path string, e Structs.EBR) bool {
+func extFirstFit(path string, e *Structs.EBR) bool {
+	// fmt.Println("First fit")
 	prevSpace := -1
 	ss := ExtBlockSize(path) //Obtengo el bloque de tamaños
 	for _, s := range ss {
 		if (e.Part_s <= s.Part_s) && (s.In_use != 's') {
 			e.Part_start = s.Part_start
-			//!AddlogPart
+			addLogPartition(path, prevSpace, e)
 			return true
 		}
 		prevSpace = int(s.Part_start) //Guardo el espacio anterior
@@ -428,7 +496,61 @@ func extFirstFit(path string, e Structs.EBR) bool {
 	return false
 }
 
-func chooseFit(path string, fit byte, p Structs.Partition) bool {
+// Asigna la particion en la memoria a bloques según el algoritmo de mejor ajuste para la particion extendida
+// Recibe la ruta del disco y la particion
+func extBestFit(path string, e *Structs.EBR) bool {
+	// fmt.Println("Best fit")
+	ss := ExtBlockSize(path) //Obtengo el bloque de tamaños
+	bestFitIdx := -1
+	prevSpace := -1
+	for i := 0; i < len(ss); i++ {
+		if (ss[i].Part_s >= e.Part_s) && (ss[i].In_use != 's') {
+			if bestFitIdx == -1 {
+				bestFitIdx = i
+			} else if ss[bestFitIdx].Part_s > ss[i].Part_s {
+				bestFitIdx = i
+			}
+		}
+	}
+	if bestFitIdx != -1 {
+		e.Part_start = ss[bestFitIdx].Part_start
+		if bestFitIdx > 0 {
+			prevSpace = int(ss[bestFitIdx-1].Part_start)
+		}
+		addLogPartition(path, prevSpace, e)
+		return true
+	}
+	return false
+}
+
+// Asigna la particion en la memoria a bloques según el algoritmo de peor ajuste para la particion extendida
+// Recibe la ruta del disco y la particion
+func extWorstFit(path string, e *Structs.EBR) bool {
+	// fmt.Println("Worst fit")
+	ss := ExtBlockSize(path) //Obtengo el bloque de tamaños
+	worstFitIdx := -1
+	prevSpace := -1
+	for i := 0; i < len(ss); i++ {
+		if (ss[i].Part_s >= e.Part_s) && (ss[i].In_use != 's') {
+			if worstFitIdx == -1 {
+				worstFitIdx = i
+			} else if ss[worstFitIdx].Part_s < ss[i].Part_s {
+				worstFitIdx = i
+			}
+		}
+	}
+	if worstFitIdx != -1 {
+		e.Part_start = ss[worstFitIdx].Part_start
+		if worstFitIdx > 0 {
+			prevSpace = int(ss[worstFitIdx-1].Part_start)
+		}
+		addLogPartition(path, prevSpace, e)
+		return true
+	}
+	return false
+}
+
+func chooseFit(path string, fit byte, p *Structs.Partition) bool {
 	if fit == 'f' {
 		return firstFit(path, p)
 	} else if fit == 'b' {
@@ -439,13 +561,13 @@ func chooseFit(path string, fit byte, p Structs.Partition) bool {
 	return false
 }
 
-func chooseExtFit(path string, fit byte, e Structs.EBR) bool {
+func chooseExtFit(path string, fit byte, e *Structs.EBR) bool {
 	if fit == 'f' {
-		return firstExtFit(path, e)
+		return extFirstFit(path, e)
 	} else if fit == 'b' {
-		return bestExtFit(path, e)
+		return extBestFit(path, e)
 	} else if fit == 'w' {
-		return worstExtFit(path, e)
+		return extWorstFit(path, e)
 	}
 	return false
 }
@@ -456,7 +578,7 @@ func CreatePart(path string, p Structs.Partition) bool {
 			m := Structs.GetMBR(path)
 			if p.Part_type == 'p' { //Si es primaria
 				if (numPrimPart(m) + numExtPart(m)) < 4 { //Compruebo si se exedio el numero de particiones permitidas
-					if chooseFit(path, m.Dsk_fit, p) { //Compruebo si se pudo asignar la particion
+					if chooseFit(path, m.Dsk_fit, &p) { //Compruebo si se pudo asignar la particion
 						fmt.Println("Particion primaria creada correctamente")
 						return true
 					} else {
@@ -468,8 +590,8 @@ func CreatePart(path string, p Structs.Partition) bool {
 			} else if p.Part_type == 'e' {
 				if numExtPart(m) == 0 {
 					if numPrimPart(m) < 4 {
-						if chooseFit(path, m.Dsk_fit, p) {
-							var nuevo Structs.EBR = Structs.REBV()
+						if chooseFit(path, m.Dsk_fit, &p) {
+							var nuevo Structs.EBR = Structs.REBRV()
 							nuevo.Part_start = p.Part_start
 							Structs.AddEBR(path, p.Part_start, nuevo)
 							fmt.Println("Particion extendida creada correctamente")
@@ -485,9 +607,18 @@ func CreatePart(path string, p Structs.Partition) bool {
 				}
 			} else if p.Part_type == 'l' {
 				if numExtPart(m) > 0 {
-					e := Structs.EBR{}
+					var e Structs.EBR = Structs.REBRV()
+					e.Part_fit = p.Part_fit
+					e.Part_start = p.Part_start
+					e.Part_s = p.Part_s
 					copy(e.Part_name[:], p.Part_name[:])
-					//!Choose fit
+					if chooseExtFit(path, p.Part_fit, &e) {
+						fmt.Println("Particion logica creada correctamente")
+						ep := GetExtPart(path)
+						Structs.ReadEBRs(path, ep, string(p.Part_name[:]))
+					} else {
+						fmt.Println("ERROR: No se pudo asignar la particion logica")
+					}
 				} else {
 					fmt.Println("ERROR: No se puede crear una particion logica si no existe una extendida")
 				}
@@ -498,5 +629,77 @@ func CreatePart(path string, p Structs.Partition) bool {
 	} else {
 		fmt.Println("ERROR: el disco \"" + Tools.GetFileName(path) + "\" no existe")
 	}
+	return false
+}
+
+func updatePart(m *Structs.MBR, p Structs.Partition, name string) {
+	if string(m.Mbr_partition_1.Part_name[:]) == name {
+		m.Mbr_partition_1 = p
+	} else if string(m.Mbr_partition_2.Part_name[:]) == name {
+		m.Mbr_partition_2 = p
+	} else if string(m.Mbr_partition_3.Part_name[:]) == name {
+		m.Mbr_partition_3 = p
+	} else if string(m.Mbr_partition_4.Part_name[:]) == name {
+		m.Mbr_partition_4 = p
+	}
+}
+
+// Devuelve el siguiente numero correspondiente para montar una particion
+func nextDiskNum(path string) int {
+	for i, md := range mds {
+		if md.Path == path {
+			return i
+		}
+	}
+	return -1
+}
+
+// Devuelve la letra correspondiente a la particion del mismo disco
+func getPartLetter(path string, name string) string {
+	letters := "abcdefghijklmnopqrstuvwxyz"
+	cont := 0
+	for _, md := range mds {
+		if md.Path == path {
+			cont++
+		}
+	}
+	return string(letters[cont])
+}
+
+func getIdMtdDisk(path string, name string) string {
+	lastNum := "31"
+	return lastNum + strconv.Itoa(nextDiskNum(path)) + getPartLetter(path, name)
+}
+
+func MountDisk(path string, name string) bool {
+	if Tools.Exists(path) {
+		if partExists(path, name) {
+			md := Structs.MountedDisk{Path: path, Name: name, Id: getIdMtdDisk(path, name)}
+			mds = append(mds, md)
+			m := Structs.GetMBR(path)
+			if isPrimPart(m, name) || isExtPart(m, name) {
+				p := getPartByName(path, name)
+				p.Part_status = '1'
+				updatePart(&m, p, name)
+				Structs.AddMBR(path, m)
+			} else if isLogPart(path, name) {
+				e := getLogPartByName(path, name)
+				if e.Part_s > 0 {
+					e.Part_status = '1'
+					Structs.AddEBR(path, e.Part_start, e)
+				}
+			}
+			fmt.Println("Particion montada correctamente")
+			return true
+		} else {
+			fmt.Println("ERROR: La particion \"" + name + "\" no existe")
+		}
+	} else {
+		fmt.Println("ERROR: el disco \"" + Tools.GetFileName(path) + "\" no existe")
+	}
+	return false
+}
+
+func MakeFileSystem(id string) bool {
 	return false
 }

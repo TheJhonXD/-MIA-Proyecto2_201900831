@@ -27,9 +27,11 @@ func analyzer(s string) {
 		fmt.Println("-------------------------------------------------------------")
 	} else if strings.ToLower(cmds[0]) == "fdisk" {
 		fmt.Println("»» " + s)
+		cmd.FDISK(cmds)
 		fmt.Println("-------------------------------------------------------------")
 	} else if strings.ToLower(cmds[0]) == "mount" {
 		fmt.Println("»» " + s)
+		cmd.MOUNT(cmds)
 		fmt.Println("-------------------------------------------------------------")
 	} else if strings.ToLower(cmds[0]) == "unmount" {
 		fmt.Println("»» " + s)
@@ -94,6 +96,7 @@ func main() {
 		reader.Scan()
 		//Obtener la entrada
 		input := reader.Text()
+		// input := `execute >path="/home/jhonx/Descargas/Archivos_de_Entrada_Proyecto_1/Proyecto_1/Parte 1/2-crear-particiones.eea"`
 		//Separar la entrada en comandos
 		cmds := Tools.Split(strings.Trim(input, " "))
 		//Verificar si el comando no es "exit" para leer el archivo

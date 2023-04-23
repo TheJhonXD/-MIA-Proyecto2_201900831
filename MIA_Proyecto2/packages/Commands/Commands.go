@@ -121,6 +121,28 @@ func check_param_name() bool {
 	return pdm.name != "-1"
 }
 
+func check_param_id() bool {
+	return pdm.id != "-1"
+}
+
+func check_param_t_mkfs() bool {
+	if pdm.t == "full" || pdm.t == "-1" {
+		return true
+	}
+	fmt.Println("ERROR: Type no valido")
+	return false
+}
+
+func check_param_fs() bool {
+	if pdm.fs == "-1" {
+		pdm.fs = "2fs"
+	}
+	if pdm.fs == "2fs" || pdm.fs == "3fs" {
+		return true
+	}
+	return false
+}
+
 func MKDISK(params []string) {
 	pdm.ResetPDM()
 	var param []string
@@ -216,4 +238,42 @@ func FDISK(params []string) {
 		}
 	}
 
+}
+
+func MOUNT(params []string) {
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">path" {
+			pdm.path = strings.Trim(param[1], "\"")
+		} else if strings.ToLower(param[0]) == ">name" {
+			pdm.name = strings.Trim(param[1], "\"")
+		} else {
+			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+		}
+	}
+
+	if check_param_path() && check_param_name() {
+		Disks.MountDisk(pdm.path, pdm.name)
+	}
+}
+
+func MKFS(params []string) {
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">type" {
+			pdm.t = strings.ToLower(param[1])
+		} else if strings.ToLower(param[0]) == ">id" {
+			pdm.id = strings.ToLower(param[1])
+		} else {
+			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+		}
+	}
+
+	if check_param_t_mkfs() && check_param_id() {
+		Disks.MakeFileSystem(pdm.id)
+	}
 }
