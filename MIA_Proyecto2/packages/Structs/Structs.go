@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"time"
+	"unsafe"
 )
 
 type SpaceSize struct {
@@ -69,6 +71,50 @@ type EBR struct {
 	Part_name   [16]byte
 }
 
+type SuperBlock struct {
+	S_filesystem_type   int32
+	S_inodes_count      int32
+	S_blocks_count      int32
+	S_free_blocks_count int32
+	S_free_inodes_count int32
+	S_mtime             Time
+	S_mnt_count         int32
+	S_magic             int32
+	S_inode_size        int32
+	S_block_size        int32
+	S_first_ino         int32
+	S_first_blo         int32
+	S_bm_inode_start    int32
+	S_bm_block_start    int32
+	S_inode_start       int32
+	S_block_start       int32
+}
+
+type Inodo struct {
+	I_uid   int32
+	I_gid   int32
+	I_size  int32
+	I_atime Time
+	I_ctime Time
+	I_mtime Time
+	I_block [16]byte
+	I_type  int32
+	I_perm  int32
+}
+
+type Content struct {
+	B_name  [12]byte
+	B_inodo int32
+}
+
+type FolderBlock struct {
+	B_content [4]Content
+}
+
+type FileBlock struct {
+	B_content [64]byte
+}
+
 // Reset Partition Variable
 // Limpia la variable de tipo Partition o inicializa
 func RPV() Partition {
@@ -79,6 +125,12 @@ func RPV() Partition {
 // Limpia la variable de tipo EBR o inicializa
 func REBRV() EBR {
 	return EBR{'0', 0, int32(-1), int32(-1), int32(-1), [16]byte(bytes.Repeat([]byte("-1"), 16))}
+}
+
+// Reset SuperBlock Variable
+// Limpia la variable SuperBlock o inicializa en 0
+func RSBV() SuperBlock {
+	return SuperBlock{-1, -1, -1, -1, -1, Time{-1, -1, -1, -1, -1, -1}, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 }
 
 // Añade el MBR a un disco especificado
@@ -235,4 +287,177 @@ func ReadEBRs(path string, ep Partition, name string) {
 			fmt.Println("Next: ", actual.Part_next)
 		}
 	}
+}
+
+// Añade el Super bloque a una partición especifica
+// Recibe la ruta del disco, el inicio y el super bloque
+func AddSuperBlock(path string, start int32, sb SuperBlock) {
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	err = binary.Write(myfile, binary.LittleEndian, &sb)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+}
+
+// Retorna el Super Bloque de la particion indicada
+// Recibe la ruta dle disco y el inicio del SuperBloque
+func GetSuperBlock(path string, start int32) SuperBlock {
+	myfile, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var sb SuperBlock
+	err = binary.Read(myfile, binary.LittleEndian, &sb)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+	return sb
+}
+
+// Añade el Inodo a una partición especifica
+// Recibe la ruta del disco, la posicion donde se empezara a escribir, y el inodo
+func AddInodo(path string, start int32, i Inodo) {
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	err = binary.Write(myfile, binary.LittleEndian, &i)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+}
+
+// Retorna el Inodo de la particion indicada
+// Recibe la ruta del disco y el inicio del inodo
+func GetInodo(path string, start int32) Inodo {
+	myfile, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var i Inodo
+	err = binary.Read(myfile, binary.LittleEndian, &i)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+	return i
+}
+
+// Añade el bloque de carpeta a una partición especifica
+// Recibe la ruta del disco, la posicion donde se empezara a escribir, y el bloque de carpeta
+func AddFolderBlock(path string, start int32, fb FolderBlock) {
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	err = binary.Write(myfile, binary.LittleEndian, &fb)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+}
+
+// Retorna el bloque de carpeta de la particion indicada
+// Recibe la ruta del disco y el inicio del bloque de carpeta
+func GetFolderBlock(path string, start int32) FolderBlock {
+	myfile, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var fb FolderBlock
+	err = binary.Read(myfile, binary.LittleEndian, &fb)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+	return fb
+}
+
+// Añade el bloque de archivo a una partición especifica
+// Recibe la ruta del disco, la posicion donde se empezara a escribir, y el bloque de archivo
+func AddFileBlock(path string, start int32, f FileBlock) {
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	err = binary.Write(myfile, binary.LittleEndian, &f)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+}
+
+// Retorna el bloque de archivo de la particion indicada
+// Recibe la ruta del disco y el inicio del bloque de archivo
+func GetFileBlock(path string, start int32) FileBlock {
+	myfile, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(0, 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var f FileBlock
+	err = binary.Read(myfile, binary.LittleEndian, &f)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+	return f
+}
+
+// Devuelve el numero maximo de estructuras
+func GetMaxNumStructExt2(tam int32) int32 {
+	return int32(math.Floor((float64(tam) - float64(unsafe.Sizeof(SuperBlock{}))/(1+3+float64(unsafe.Sizeof(Inodo{}))+(3*float64(unsafe.Sizeof(FolderBlock{})))))))
 }

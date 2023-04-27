@@ -3,6 +3,7 @@ package Commands
 import (
 	"fmt"
 	Disks "pack/packages/Disks"
+	"pack/packages/Graphviz"
 	"pack/packages/Structs"
 	"strconv"
 	"strings"
@@ -133,16 +134,6 @@ func check_param_t_mkfs() bool {
 	return false
 }
 
-func check_param_fs() bool {
-	if pdm.fs == "-1" {
-		pdm.fs = "2fs"
-	}
-	if pdm.fs == "2fs" || pdm.fs == "3fs" {
-		return true
-	}
-	return false
-}
-
 func MKDISK(params []string) {
 	pdm.ResetPDM()
 	var param []string
@@ -255,7 +246,12 @@ func MOUNT(params []string) {
 	}
 
 	if check_param_path() && check_param_name() {
+		//!ERROR al crear el directorio
 		Disks.MountDisk(pdm.path, pdm.name)
+		/* mds := Disks.GetDisksMounted()
+		for _, md := range mds {
+			fmt.Println("->:", md.Id)
+		} */
 	}
 }
 
@@ -275,5 +271,28 @@ func MKFS(params []string) {
 
 	if check_param_t_mkfs() && check_param_id() {
 		Disks.MakeFileSystem(pdm.id)
+	}
+}
+
+func REP(params []string) {
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">name" {
+			pdm.name = strings.ToLower(strings.Trim(param[1], "\""))
+		} else if strings.ToLower(param[0]) == ">path" {
+			pdm.path = strings.Trim(param[1], "\"")
+		} else if strings.ToLower(param[0]) == ">id" {
+			pdm.id = param[1]
+		} else if strings.ToLower(param[0]) == ">ruta" {
+			pdm.ruta = strings.Trim(param[1], "\"")
+		} else {
+			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+		}
+	}
+
+	if pdm.name == "disk" && check_param_path() && check_param_id() {
+		Graphviz.GetDiskGraph(pdm.path, pdm.id)
 	}
 }

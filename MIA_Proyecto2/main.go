@@ -41,6 +41,7 @@ func analyzer(s string) {
 		fmt.Println("-------------------------------------------------------------")
 	} else if strings.ToLower(cmds[0]) == "rep" {
 		fmt.Println("»» " + s)
+		cmd.REP(cmds)
 		fmt.Println("-------------------------------------------------------------")
 	} else if strings.ToLower(cmds[0]) == "pause" {
 		fmt.Println("Press any key to continue...")

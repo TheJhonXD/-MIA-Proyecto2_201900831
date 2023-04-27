@@ -2,6 +2,7 @@ package Tools
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -59,4 +60,8 @@ func CreateDir(path string) bool {
 		}
 	}
 	return true
+}
+
+func GetPercentage(size float64, disk_size float64) int {
+	return int(math.Round((size / disk_size) * 100))
 }

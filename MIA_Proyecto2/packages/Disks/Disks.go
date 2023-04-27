@@ -1,6 +1,7 @@
 package Disks
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"pack/packages/Tools"
 	"sort"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -68,13 +70,22 @@ func GetExtPart(path string) Structs.Partition {
 
 // Comruebo si una particion dada es primaria
 func isPrimPart(m Structs.MBR, name string) bool {
-	if string(m.Mbr_partition_1.Part_name[:]) == name && m.Mbr_partition_1.Part_type == 'p' {
+	/* fmt.Println("Nombre: ", string(m.Mbr_partition_1.Part_type))
+	if string(m.Mbr_partition_1.Part_type) == "p" {
+		fmt.Println("JSJSSJJSJSJSJSJSJSJSJ")
+	}
+	fmt.Println("ERROR AQUI: " + string(m.Mbr_partition_1.Part_name[:]))
+	fmt.Println("ERROR AQUI: " + name) */
+	/* if m.Mbr_partition_1.Part_name == [16]byte([]byte(name)) {
+		fmt.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	} */
+	if strings.TrimRight(string(m.Mbr_partition_1.Part_name[:]), "\x00") == name && string(m.Mbr_partition_1.Part_type) == "p" {
 		return true
-	} else if string(m.Mbr_partition_2.Part_name[:]) == name && m.Mbr_partition_2.Part_type == 'p' {
+	} else if strings.TrimRight(string(m.Mbr_partition_2.Part_name[:]), "\x00") == name && string(m.Mbr_partition_2.Part_type) == "p" {
 		return true
-	} else if string(m.Mbr_partition_3.Part_name[:]) == name && m.Mbr_partition_3.Part_type == 'p' {
+	} else if strings.TrimRight(string(m.Mbr_partition_3.Part_name[:]), "\x00") == name && string(m.Mbr_partition_3.Part_type) == "p" {
 		return true
-	} else if string(m.Mbr_partition_4.Part_name[:]) == name && m.Mbr_partition_4.Part_type == 'p' {
+	} else if strings.TrimRight(string(m.Mbr_partition_4.Part_name[:]), "\x00") == name && string(m.Mbr_partition_4.Part_type) == "p" {
 		return true
 	}
 	return false
@@ -82,13 +93,13 @@ func isPrimPart(m Structs.MBR, name string) bool {
 
 // Compruebo si una particion dada es extendida
 func isExtPart(m Structs.MBR, name string) bool {
-	if string(m.Mbr_partition_1.Part_name[:]) == name && m.Mbr_partition_1.Part_type == 'e' {
+	if strings.TrimRight(string(m.Mbr_partition_1.Part_name[:]), "\x00") == name && string(m.Mbr_partition_1.Part_type) == "e" {
 		return true
-	} else if string(m.Mbr_partition_2.Part_name[:]) == name && m.Mbr_partition_2.Part_type == 'e' {
+	} else if strings.TrimRight(string(m.Mbr_partition_2.Part_name[:]), "\x00") == name && string(m.Mbr_partition_2.Part_type) == "e" {
 		return true
-	} else if string(m.Mbr_partition_3.Part_name[:]) == name && m.Mbr_partition_3.Part_type == 'e' {
+	} else if strings.TrimRight(string(m.Mbr_partition_3.Part_name[:]), "\x00") == name && string(m.Mbr_partition_3.Part_type) == "e" {
 		return true
-	} else if string(m.Mbr_partition_4.Part_name[:]) == name && m.Mbr_partition_4.Part_type == 'e' {
+	} else if strings.TrimRight(string(m.Mbr_partition_4.Part_name[:]), "\x00") == name && string(m.Mbr_partition_4.Part_type) == "e" {
 		return true
 	}
 	return false
@@ -102,7 +113,7 @@ func isLogPart(path string, name string) bool {
 		if start.Part_next > 0 {
 			actual := Structs.GetEBR(path, start.Part_next)
 			for actual.Part_next > 0 {
-				if string(actual.Part_name[:]) == name {
+				if strings.TrimRight(string(actual.Part_name[:]), "\x00") == name {
 					return true
 				}
 				actual = Structs.GetEBR(path, actual.Part_next)
@@ -644,14 +655,37 @@ func updatePart(m *Structs.MBR, p Structs.Partition, name string) {
 	}
 }
 
-// Devuelve el siguiente numero correspondiente para montar una particion
-func nextDiskNum(path string) int {
-	for i, md := range mds {
+// Busca el path de una particion montada en la lista de montadas y retorna un booleano
+func pathExists(path string) bool {
+	for _, md := range mds {
 		if md.Path == path {
-			return i
+			return true
 		}
 	}
-	return -1
+	return false
+}
+
+// Devuelve el siguiente numero correspondiente para montar una particion
+func nextDiskNum(path string, name string) int {
+	mdsAux := mds
+	if pathExists(path) {
+		for i, md := range mds {
+			if md.Path == path {
+				return i + 1
+			}
+		}
+	} else {
+		if len(mds) > 0 {
+			cmp := func(i, j int) bool {
+				return mdsAux[i].Id < mdsAux[j].Id
+			}
+			sort.Slice(mdsAux, cmp)
+			cont, _ := strconv.Atoi(string(mdsAux[len(mdsAux)-1].Id[2:3]))
+			cont++
+			return cont
+		}
+	}
+	return 1
 }
 
 // Devuelve la letra correspondiente a la particion del mismo disco
@@ -668,7 +702,20 @@ func getPartLetter(path string, name string) string {
 
 func getIdMtdDisk(path string, name string) string {
 	lastNum := "31"
-	return lastNum + strconv.Itoa(nextDiskNum(path)) + getPartLetter(path, name)
+	return lastNum + strconv.Itoa(nextDiskNum(path, name)) + getPartLetter(path, name)
+}
+
+func GetDisksMounted() []Structs.MountedDisk {
+	return mds
+}
+
+func GetDiskMtd(id string) Structs.MountedDisk {
+	for _, md := range mds {
+		if md.Id == id {
+			return md
+		}
+	}
+	return Structs.MountedDisk{}
 }
 
 func MountDisk(path string, name string) bool {
@@ -700,6 +747,128 @@ func MountDisk(path string, name string) bool {
 	return false
 }
 
+func fillSpace(path string, start int, end int) bool {
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	// defer myfile.Close()
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	/* Lleno el archivo con caracteres nulos para simular el tamaño */
+	var buffer byte = '\000'
+	for i := 0; i < end; i++ {
+		err = binary.Write(myfile, binary.LittleEndian, &buffer)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+	}
+	myfile.Close()
+	return err == nil
+}
+
+func IdExists(id string) bool {
+	for _, md := range mds {
+		if md.Id == id {
+			return true
+		}
+	}
+	return false
+}
+
+func addBmpInodeNBlock(path string, start int32, tam int32) bool {
+	bmi := make([]byte, tam)
+	bmb := make([]byte, 3*tam)
+
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	err = binary.Write(myfile, binary.LittleEndian, &bmi)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+		return false
+	}
+	err = binary.Write(myfile, binary.LittleEndian, &bmb)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+		return false
+	}
+	myfile.Close()
+	return true
+}
+
 func MakeFileSystem(id string) bool {
+	if IdExists(id) {
+		md := GetDiskMtd(id)
+		m := Structs.GetMBR(md.Path)
+		/* Realizo el formateo de la particion */
+		if isPrimPart(m, md.Name) || isExtPart(m, md.Name) {
+			p := getPartByName(md.Path, md.Name)
+			if p.Part_start > 0 {
+				if fillSpace(md.Path, int(p.Part_start), int(p.Part_s)) {
+					sb := Structs.RSBV()
+					sb.S_inode_size = int32(unsafe.Sizeof(Structs.Inodo{}))
+					sb.S_block_size = int32(unsafe.Sizeof(Structs.FolderBlock{}))
+					/* Agrego las estructuras */
+					num_structs := Structs.GetMaxNumStructExt2(p.Part_s)
+					//Inicio del bitmap de inodos
+					sb.S_bm_inode_start = p.Part_start + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
+					//Inicio del bitmap de bloques
+					sb.S_bm_block_start = sb.S_bm_inode_start + int32(num_structs) + 1
+					//Inicio de la tabla de inodos
+					sb.S_inode_start = sb.S_bm_block_start + int32(3*num_structs) + 1
+					//Inicio de la tabla de bloques
+					sb.S_block_start = sb.S_inode_start + int32(num_structs*int32(unsafe.Sizeof(Structs.Inodo{}))) + 1
+					/* Agrego el super bloque */
+					Structs.AddSuperBlock(md.Path, p.Part_start, sb)
+					//Añado el bitmap de inodos y de bloques
+					addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_structs)
+					return true
+				} else {
+					fmt.Println("ERROR: No se pudo formatear el espacio de la particion")
+				}
+			} else {
+				fmt.Println("ERROR: Algo salii mal")
+			}
+		} else if isLogPart(md.Path, md.Name) {
+			e := getLogPartByName(md.Path, md.Name)
+			if e.Part_start > 0 {
+				if fillSpace(md.Path, int(e.Part_start), int(e.Part_s)) {
+					/* Agrego las estructuras */
+					sb := Structs.RSBV()
+					num_struct := Structs.GetMaxNumStructExt2(e.Part_s)
+					//Inicio del bitmap de inodos
+					sb.S_bm_inode_start = e.Part_start + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
+					//Inicio del bitmap de bloques
+					sb.S_bm_block_start = sb.S_bm_inode_start + int32(num_struct) + 1
+					//Inicio de la tabla de inodos
+					sb.S_inode_start = sb.S_bm_block_start + int32(3*num_struct) + 1
+					//Inicio de la tabla de bloques
+					sb.S_block_start = sb.S_inode_start + int32(num_struct*int32(unsafe.Sizeof(Structs.Inodo{}))) + 1
+					/* Agrego el super bloque */
+					Structs.AddSuperBlock(md.Path, e.Part_start, sb)
+					//Añado el bitmap de inodos y de bloques
+					addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_struct)
+					return true
+				} else {
+					fmt.Println("ERROR: No se pudo formatear el espacio de la particion")
+				}
+			} else {
+				fmt.Println("ERROR: Algo salio mal")
+			}
+		}
+	} else {
+		fmt.Println("ERROR: No existe una particion montada con el id \"" + id + "\"")
+	}
 	return false
 }

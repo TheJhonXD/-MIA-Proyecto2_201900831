@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>MIA Proyecto 2</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="name">MIAProyecto2</div>
+            <ul class="menu">
+                <li id="btn-menu-main">Principal</li>
+                <li id="btn-menu-login">Login</li>
+                <li id="btn-menu-reports">Reportes</li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section class="main" id="main">
+            <div class="container-openfile">
+                <div class="openfile" id="openfile">
+                    <input type="text" name="" id="inputPath" readonly value="No se ha seleccionado ningún archivo">
+                    <label for="myfile" class="btn-openfile" id="btn-openfile">Examinar</label>
+                    <input type="file" name="filename" id="myfile">
+                    <button id="execute">Ejecutar</button>
+                </div>
+            </div>
+            <textarea name="" id="editor" disabled></textarea>
+            <textarea name="" id="result" disabled class="last"></textarea>
+        </section>
+        <section class="login-page" id="login-page" style="display: none;">
+            <div class="login">
+                <div class="title">Login</div>
+                <form action="">
+                    <div class="container-items">
+                        <input type="text" name="" id="" placeholder="ID Particion">
+                    </div>
+                    <div class="container-items">
+                        <input type="text" name="" id="" placeholder="User">
+                    </div>
+                    <div class="container-items">
+                        <input type="text" name="" id="" placeholder="Password">
+                    </div>
+                    <button>Ingresar</button>
+                </form>
+            </div>
+        </section>
+        <section class="reports-page" id="report-page" style="display: none;">
+            <div class="title">Reportes</div>
+            <div class="reports">
+                <div class="thumb">
+                    <img src="" alt="">
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer>TJX - 201900831</footer>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
+    <script src="script.js"></script>
+</body>
+</html>
