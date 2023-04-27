@@ -133,6 +133,19 @@ func RSBV() SuperBlock {
 	return SuperBlock{-1, -1, -1, -1, -1, Time{-1, -1, -1, -1, -1, -1}, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 }
 
+// Reset Inode Variable
+// Limpia la variable Inodo o inicializa en 0
+func RIV() Inodo {
+	return Inodo{-1, -1, -1, Time{-1, -1, -1, -1, -1, -1}, Time{-1, -1, -1, -1, -1, -1}, Time{-1, -1, -1, -1, -1, -1}, [16]byte(bytes.Repeat([]byte("-1"), 16)), 0, -1}
+}
+
+// Reset FolderBlock Variable
+// Limpia la variable FolderBlock o inicializa en 0
+func RFBV() FolderBlock {
+	c := Content{[12]byte(bytes.Repeat([]byte("-1"), 12)), -1}
+	return FolderBlock{[4]Content{c, c, c, c}}
+}
+
 // Añade el MBR a un disco especificado
 // Recibe el path del disco y el MBR
 func AddMBR(path string, m MBR) {

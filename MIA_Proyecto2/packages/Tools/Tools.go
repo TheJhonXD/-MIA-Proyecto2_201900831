@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 // Divide una cadena en un vector usando como delimitador los espacios
@@ -35,12 +36,12 @@ func DeleteComments(s string) string {
 
 // Remueve el nombre de archivo de la ruta y devuelve la ruta
 func GetPath(p string) string {
-	return filepath.Dir(p)
+	return filepath.Dir(p) + "/"
 }
 
 // Devuelve el nombre del archivo
 func GetFileName(p string) string {
-	return filepath.Base(p)
+	return strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
 }
 
 // Devuelve la extensión del archivo
@@ -52,7 +53,7 @@ func GetFileExt(p string) string {
 func CreateDir(path string) bool {
 	if !Exists(GetPath(path)) {
 		// fmt.Println(GetPath(path))
-		if err := os.MkdirAll(path, 0777); err != nil {
+		if err := os.MkdirAll(path, 0777); err == nil {
 			fmt.Println("Directorio creado")
 		} else {
 			fmt.Println("ERROR: No se pudo crear el directorio")

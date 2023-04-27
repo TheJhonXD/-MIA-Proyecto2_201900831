@@ -69,7 +69,7 @@ func GetExtPart(path string) Structs.Partition {
 }
 
 // Comruebo si una particion dada es primaria
-func isPrimPart(m Structs.MBR, name string) bool {
+func IsPrimPart(m Structs.MBR, name string) bool {
 	/* fmt.Println("Nombre: ", string(m.Mbr_partition_1.Part_type))
 	if string(m.Mbr_partition_1.Part_type) == "p" {
 		fmt.Println("JSJSSJJSJSJSJSJSJSJSJ")
@@ -92,7 +92,7 @@ func isPrimPart(m Structs.MBR, name string) bool {
 }
 
 // Compruebo si una particion dada es extendida
-func isExtPart(m Structs.MBR, name string) bool {
+func IsExtPart(m Structs.MBR, name string) bool {
 	if strings.TrimRight(string(m.Mbr_partition_1.Part_name[:]), "\x00") == name && string(m.Mbr_partition_1.Part_type) == "e" {
 		return true
 	} else if strings.TrimRight(string(m.Mbr_partition_2.Part_name[:]), "\x00") == name && string(m.Mbr_partition_2.Part_type) == "e" {
@@ -106,7 +106,7 @@ func isExtPart(m Structs.MBR, name string) bool {
 }
 
 // Compruebo si una particion dada es logica
-func isLogPart(path string, name string) bool {
+func IsLogPart(path string, name string) bool {
 	var ep = GetExtPart(path)
 	if ep.Part_start > 0 {
 		var start = Structs.GetEBR(path, ep.Part_start)
@@ -127,7 +127,7 @@ func isLogPart(path string, name string) bool {
 	return false
 }
 
-func getPartByName(path string, name string) Structs.Partition {
+func GetPartByName(path string, name string) Structs.Partition {
 	m := Structs.GetMBR(path)
 	if string(m.Mbr_partition_1.Part_name[:]) == name {
 		return m.Mbr_partition_1
@@ -141,7 +141,7 @@ func getPartByName(path string, name string) Structs.Partition {
 	return Structs.RPV()
 }
 
-func getLogPartByName(path string, name string) Structs.EBR {
+func GetLogPartByName(path string, name string) Structs.EBR {
 	var ep = GetExtPart(path)
 	if ep.Part_s > 0 {
 		var start = Structs.GetEBR(path, ep.Part_start)
@@ -165,11 +165,11 @@ func getLogPartByName(path string, name string) Structs.EBR {
 // Recibe la ruta del disco y el nombre de la particion
 func partExists(path string, name string) bool {
 	var m = Structs.GetMBR(path)
-	if isPrimPart(m, name) { //Busco si existe una particion primaria con el nombre dado
+	if IsPrimPart(m, name) { //Busco si existe una particion primaria con el nombre dado
 		return true
-	} else if isExtPart(m, name) { //Busco si existe una particion extendida con el nombre dado
+	} else if IsExtPart(m, name) { //Busco si existe una particion extendida con el nombre dado
 		return true
-	} else if isLogPart(path, name) { //Busco si existe una particion logica con el nombre dado
+	} else if IsLogPart(path, name) { //Busco si existe una particion logica con el nombre dado
 		return true
 	}
 	return false
@@ -724,13 +724,13 @@ func MountDisk(path string, name string) bool {
 			md := Structs.MountedDisk{Path: path, Name: name, Id: getIdMtdDisk(path, name)}
 			mds = append(mds, md)
 			m := Structs.GetMBR(path)
-			if isPrimPart(m, name) || isExtPart(m, name) {
-				p := getPartByName(path, name)
+			if IsPrimPart(m, name) || IsExtPart(m, name) {
+				p := GetPartByName(path, name)
 				p.Part_status = '1'
 				updatePart(&m, p, name)
 				Structs.AddMBR(path, m)
-			} else if isLogPart(path, name) {
-				e := getLogPartByName(path, name)
+			} else if IsLogPart(path, name) {
+				e := GetLogPartByName(path, name)
 				if e.Part_s > 0 {
 					e.Part_status = '1'
 					Structs.AddEBR(path, e.Part_start, e)
@@ -812,8 +812,8 @@ func MakeFileSystem(id string) bool {
 		md := GetDiskMtd(id)
 		m := Structs.GetMBR(md.Path)
 		/* Realizo el formateo de la particion */
-		if isPrimPart(m, md.Name) || isExtPart(m, md.Name) {
-			p := getPartByName(md.Path, md.Name)
+		if IsPrimPart(m, md.Name) || IsExtPart(m, md.Name) {
+			p := GetPartByName(md.Path, md.Name)
 			if p.Part_start > 0 {
 				if fillSpace(md.Path, int(p.Part_start), int(p.Part_s)) {
 					sb := Structs.RSBV()
@@ -840,15 +840,15 @@ func MakeFileSystem(id string) bool {
 			} else {
 				fmt.Println("ERROR: Algo salii mal")
 			}
-		} else if isLogPart(md.Path, md.Name) {
-			e := getLogPartByName(md.Path, md.Name)
+		} else if IsLogPart(md.Path, md.Name) {
+			e := GetLogPartByName(md.Path, md.Name)
 			if e.Part_start > 0 {
 				if fillSpace(md.Path, int(e.Part_start), int(e.Part_s)) {
 					/* Agrego las estructuras */
 					sb := Structs.RSBV()
 					num_struct := Structs.GetMaxNumStructExt2(e.Part_s)
 					//Inicio del bitmap de inodos
-					sb.S_bm_inode_start = e.Part_start + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
+					sb.S_bm_inode_start = e.Part_start + int32(unsafe.Sizeof(Structs.EBR{})) + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
 					//Inicio del bitmap de bloques
 					sb.S_bm_block_start = sb.S_bm_inode_start + int32(num_struct) + 1
 					//Inicio de la tabla de inodos
@@ -856,7 +856,7 @@ func MakeFileSystem(id string) bool {
 					//Inicio de la tabla de bloques
 					sb.S_block_start = sb.S_inode_start + int32(num_struct*int32(unsafe.Sizeof(Structs.Inodo{}))) + 1
 					/* Agrego el super bloque */
-					Structs.AddSuperBlock(md.Path, e.Part_start, sb)
+					Structs.AddSuperBlock(md.Path, e.Part_start+int32(unsafe.Sizeof(Structs.EBR{}))+1, sb)
 					//Añado el bitmap de inodos y de bloques
 					addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_struct)
 					return true

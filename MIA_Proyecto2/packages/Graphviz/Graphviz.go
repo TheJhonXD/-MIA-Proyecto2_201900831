@@ -42,7 +42,7 @@ func repDiskTR(path string, m Structs.MBR) string {
 			if s.Type == 'p' {
 				graph += "\t\t\t\t<td colspan=\"2\" rowspan=\"12\">Primaria<br/><font point-size=\"8\">" + strconv.Itoa(pct) + "% del disco</font></td>\n"
 			} else if s.Type == 'e' {
-				graph += "\t\t\t\t<td colspan=\"" + strconv.Itoa(tamExt+contInUse) + "\" rowspan=\"12\">Extendida<br/><font point-size=\"8\">" + strconv.Itoa(pct) + "% del disco</font></td>\n"
+				graph += "\t\t\t\t<td colspan=\"" + strconv.Itoa(tamExt+contInUse) + "\">Extendida<br/><font point-size=\"8\">" + strconv.Itoa(pct) + "% del disco</font></td>\n"
 			}
 		}
 	}
@@ -83,7 +83,7 @@ func diskChart(path string) string {
 // Recibe como parametro la ruta donde se guardará la imagen y el id del disco
 func GetDiskGraph(path string, id string) {
 	ruta := Tools.GetPath(path) + Tools.GetFileName(path) + ".dot"
-	var stringCmd string
+	fmt.Println("RUTA:", ruta)
 
 	if Disks.IdExists(id) {
 		if Tools.CreateDir(Tools.GetPath(path)) {
@@ -96,14 +96,13 @@ func GetDiskGraph(path string, id string) {
 
 			myfile.Write([]byte(text))
 			myfile.Close()
-			stringCmd = "dot -T" + Tools.GetFileExt(path) + " " + ruta + " -o " + Tools.GetPath(ruta) + Tools.GetFileName(path)
-			cmd := exec.Command(stringCmd)
-			output, err := cmd.Output()
+
+			cmd := exec.Command("dot", "-T"+Tools.GetFileExt(path)[1:], ruta, "-o", Tools.GetPath(ruta)+Tools.GetFileName(path)+Tools.GetFileExt(path))
+			err = cmd.Run()
 			if err != nil {
 				fmt.Println("ERROR: ", err)
 				return
 			}
-			fmt.Println(string(output))
 			fmt.Println("Grafo creado correctamente")
 		}
 	} else {

@@ -246,7 +246,6 @@ func MOUNT(params []string) {
 	}
 
 	if check_param_path() && check_param_name() {
-		//!ERROR al crear el directorio
 		Disks.MountDisk(pdm.path, pdm.name)
 		/* mds := Disks.GetDisksMounted()
 		for _, md := range mds {
