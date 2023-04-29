@@ -115,6 +115,20 @@ type FileBlock struct {
 	B_content [64]byte
 }
 
+type Group struct {
+	GID  int32
+	Type byte
+	Grp  [10]byte
+}
+
+type User struct {
+	UID  int32
+	Type byte
+	Grp  [10]byte
+	Usr  [10]byte
+	Pwd  [10]byte
+}
+
 // Reset Partition Variable
 // Limpia la variable de tipo Partition o inicializa
 func RPV() Partition {
