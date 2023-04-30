@@ -11,6 +11,15 @@ import (
 	"unsafe"
 )
 
+type Response struct {
+	Message string `json:"message"`
+}
+
+type ResponseGraph struct {
+	Name string `json:"name"`
+	Id   string `json:"id"`
+}
+
 type SpaceSize struct {
 	Part_start int32
 	Part_s     int32

@@ -86,11 +86,11 @@ func linkInodeToBlock(path string, start int32, id_bloque int32, i Structs.Inodo
 	Structs.AddInodo(path, start, i)
 }
 
-func linkInodeToFile(path string, start int32, id_bloque int32, i Structs.Inodo) {
-	indice := getNxtFreeApD(i.I_block)
-	i.I_block[indice] = byte(id_bloque)
-	Structs.AddInodo(path, start, i)
-}
+// func linkInodeToFile(path string, start int32, id_bloque int32, i Structs.Inodo) {
+// 	indice := getNxtFreeApD(i.I_block)
+// 	i.I_block[indice] = byte(id_bloque)
+// 	Structs.AddInodo(path, start, i)
+// }
 
 func CreateRoot(id string) bool {
 	md := Disks.GetDiskMtd(id)
@@ -118,5 +118,11 @@ func CreateUsersFile(id string) bool {
 	start := getPartStart(md.Path, md.Name)
 	fb := Structs.GetFolderBlock(md.Path, start)
 	indice := getNxtFreeApInodo(fb)
+	var array [12]byte
+	copy(array[:], "users.txt")
+	fb.B_content[indice].B_name = array
+	fb.B_content[indice].B_inodo = 1
 	i := createInode(1, 1, 0, 0)
+	Structs.AddInodo(md.Path, start, i)
+	return true
 }

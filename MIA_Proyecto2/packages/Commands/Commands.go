@@ -3,7 +3,6 @@ package Commands
 import (
 	"fmt"
 	Disks "pack/packages/Disks"
-	"pack/packages/Graphviz"
 	"pack/packages/Structs"
 	"strconv"
 	"strings"
@@ -134,7 +133,8 @@ func check_param_t_mkfs() bool {
 	return false
 }
 
-func MKDISK(params []string) {
+func MKDISK(params []string) string {
+	messages := ""
 	pdm.ResetPDM()
 	var param []string
 	for i := 1; i < len(params); i++ {
@@ -148,7 +148,7 @@ func MKDISK(params []string) {
 		} else if strings.ToLower(param[0]) == ">fit" {
 			pdm.f = strings.ToLower(param[1])
 		} else {
-			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
 		}
 	}
 
@@ -161,7 +161,8 @@ func MKDISK(params []string) {
 			pdm.s *= 1024 * 1024
 		}
 		//Crear el disco y comprobar su creacion
-		if Disks.CreateDisk(pdm.path, pdm.s) {
+		flag, message := Disks.CreateDisk(pdm.path, pdm.s)
+		if flag {
 			t := Structs.Time{}
 			t.SetTime()
 			m := Structs.MBR{Mbr_tamano: int32(pdm.s), Mbr_fecha_creacion: t, Mbr_dsk_signature: 0, Dsk_fit: byte(pdm.f[0]), Mbr_partition_1: Structs.RPV(), Mbr_partition_2: Structs.RPV(), Mbr_partition_3: Structs.RPV(), Mbr_partition_4: Structs.RPV()} //Crear el MBR
@@ -170,10 +171,13 @@ func MKDISK(params []string) {
 			//Imprimir el MBR
 			Structs.ReadMBR(pdm.path)
 		}
+		messages += message
 	}
+	return messages
 }
 
-func RMDISK(params []string) {
+func RMDISK(params []string) string {
+	messages := ""
 	pdm.ResetPDM()
 	var param []string
 	for i := 1; i < len(params); i++ {
@@ -181,16 +185,19 @@ func RMDISK(params []string) {
 		if strings.ToLower(param[0]) == ">path" {
 			pdm.path = strings.Trim(param[1], "\"")
 		} else {
-			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
 		}
 	}
 
 	if check_param_path() {
-		Disks.DeleteDisk(pdm.path)
+		_, message := Disks.DeleteDisk(pdm.path)
+		messages += message
 	}
+	return messages
 }
 
-func FDISK(params []string) {
+func FDISK(params []string) string {
+	messages := ""
 	pdm.ResetPDM()
 	var param []string
 	for i := 1; i < len(params); i++ {
@@ -208,7 +215,7 @@ func FDISK(params []string) {
 		} else if strings.ToLower(param[0]) == ">name" {
 			pdm.name = strings.Trim(param[1], "\"")
 		} else {
-			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
 		}
 	}
 
@@ -224,14 +231,17 @@ func FDISK(params []string) {
 		//Crear una variable particion para guardar los datos, excepto el inicio de particion y el estado
 		p := Structs.Partition{Part_status: '0', Part_type: byte(pdm.t[0]), Part_fit: byte(pdm.f[0]), Part_start: int32(-1), Part_s: int32(pdm.s)}
 		copy(p.Part_name[:], pdm.name)
-		if Disks.CreatePart(pdm.path, p) { //Creo la particion y compruebo que todo haya salido bien
+		flag, message := Disks.CreatePart(pdm.path, p)
+		if flag { //Creo la particion y compruebo que todo haya salido bien
 			Structs.ReadMBR(pdm.path)
 		}
+		messages += message
 	}
-
+	return messages
 }
 
-func MOUNT(params []string) {
+func MOUNT(params []string) string {
+	messages := ""
 	pdm.ResetPDM()
 	var param []string
 	for i := 1; i < len(params); i++ {
@@ -241,20 +251,23 @@ func MOUNT(params []string) {
 		} else if strings.ToLower(param[0]) == ">name" {
 			pdm.name = strings.Trim(param[1], "\"")
 		} else {
-			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
 		}
 	}
 
 	if check_param_path() && check_param_name() {
-		Disks.MountDisk(pdm.path, pdm.name)
+		_, message := Disks.MountDisk(pdm.path, pdm.name)
+		messages += message
 		/* mds := Disks.GetDisksMounted()
 		for _, md := range mds {
 			fmt.Println("->:", md.Id)
 		} */
 	}
+	return messages
 }
 
-func MKFS(params []string) {
+func MKFS(params []string) string {
+	messages := ""
 	pdm.ResetPDM()
 	var param []string
 	for i := 1; i < len(params); i++ {
@@ -264,16 +277,23 @@ func MKFS(params []string) {
 		} else if strings.ToLower(param[0]) == ">id" {
 			pdm.id = strings.ToLower(param[1])
 		} else {
-			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
 		}
 	}
 
 	if check_param_t_mkfs() && check_param_id() {
-		Disks.MakeFileSystem(pdm.id)
+		flag, message := Disks.MakeFileSystem(pdm.id)
+		messages += message
+		if flag {
+			fmt.Println("Falta añadir users")
+			//!Añadir root
+		}
 	}
+	return messages
 }
 
-func REP(params []string) {
+func REP(params []string) string {
+	messages := ""
 	pdm.ResetPDM()
 	var param []string
 	for i := 1; i < len(params); i++ {
@@ -287,11 +307,12 @@ func REP(params []string) {
 		} else if strings.ToLower(param[0]) == ">ruta" {
 			pdm.ruta = strings.Trim(param[1], "\"")
 		} else {
-			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
 		}
 	}
 
-	if pdm.name == "disk" && check_param_path() && check_param_id() {
-		Graphviz.GetDiskGraph(pdm.path, pdm.id)
-	}
+	/* if pdm.name == "disk" && check_param_path() && check_param_id() {
+		messages += Graphviz.GetDiskGraph(pdm.path, pdm.id)
+	} */
+	return messages
 }

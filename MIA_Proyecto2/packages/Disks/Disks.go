@@ -15,13 +15,15 @@ import (
 
 var mds []Structs.MountedDisk
 
-func CreateDisk(path string, tam int) bool {
+func CreateDisk(path string, tam int) (bool, string) {
+	messages := ""
 	if !Tools.Exists(path) {
 		//Creo los directorios si no existen
-		if Tools.CreateDir(path) {
+		flag, message := Tools.CreateDir(path)
+		if flag {
 			myfile, err := os.Create(path)
 			if err != nil {
-				fmt.Println("ERROR: No se pudo crear el disco")
+				messages += "ERROR: No se pudo crear el disco" + "\n"
 			}
 			// defer myfile.Close()
 			/* Lleno el archivo con caracteres nulos para simular el tamaño */
@@ -30,27 +32,29 @@ func CreateDisk(path string, tam int) bool {
 				myfile.Write(buffer[:])
 			}
 			myfile.Close()
-			fmt.Println("Disco creado exitosamente")
-			return true
+			messages += "Disco creado exitosamente" + "\n"
+			return true, messages
 		}
+		messages += message
 	} else {
-		fmt.Println("El disco \"" + Tools.GetFileName(path) + "\" ya existe")
+		messages += "El disco \"" + Tools.GetFileName(path) + "\" ya existe" + "\n"
 	}
-	return false
+	return false, messages
 }
 
-func DeleteDisk(path string) bool {
+func DeleteDisk(path string) (bool, string) {
+	messages := ""
 	if Tools.Exists(path) {
 		if err := os.Remove(path); err != nil {
-			fmt.Println("ERROR: No se pudo eliminar el disco")
+			messages += "ERROR: No se pudo eliminar el disco" + "\n"
 		} else {
-			fmt.Println("Disco eliminado exitosamente")
-			return true
+			messages += "Disco eliminado exitosamente" + "\n"
+			return true, messages
 		}
 	} else {
-		fmt.Println("El disco \"" + Tools.GetFileName(path) + "\" no existe")
+		messages += "El disco \"" + Tools.GetFileName(path) + "\" no existe" + "\n"
 	}
-	return false
+	return false, messages
 }
 
 // Retorna la particion extendida del disco
@@ -583,20 +587,21 @@ func chooseExtFit(path string, fit byte, e *Structs.EBR) bool {
 	return false
 }
 
-func CreatePart(path string, p Structs.Partition) bool {
+func CreatePart(path string, p Structs.Partition) (bool, string) {
+	messages := ""
 	if Tools.Exists(path) { //Compruebo si existe el disco
 		if !partExists(path, string(p.Part_name[:])) {
 			m := Structs.GetMBR(path)
 			if p.Part_type == 'p' { //Si es primaria
 				if (numPrimPart(m) + numExtPart(m)) < 4 { //Compruebo si se exedio el numero de particiones permitidas
 					if chooseFit(path, m.Dsk_fit, &p) { //Compruebo si se pudo asignar la particion
-						fmt.Println("Particion primaria creada correctamente")
-						return true
+						messages += "Particion primaria creada correctamente" + "\n"
+						return true, messages
 					} else {
-						fmt.Println("ERROR: No se pudo asignar la particion")
+						messages += "ERROR: No se pudo asignar la particion" + "\n"
 					}
 				} else {
-					fmt.Println("ERROR: Se exedió el numero de particiones permitidas")
+					messages += "ERROR: Se exedió el numero de particiones permitidas" + "\n"
 				}
 			} else if p.Part_type == 'e' {
 				if numExtPart(m) == 0 {
@@ -605,16 +610,16 @@ func CreatePart(path string, p Structs.Partition) bool {
 							var nuevo Structs.EBR = Structs.REBRV()
 							nuevo.Part_start = p.Part_start
 							Structs.AddEBR(path, p.Part_start, nuevo)
-							fmt.Println("Particion extendida creada correctamente")
-							return true
+							messages += "Particion extendida creada correctamente" + "\n"
+							return true, messages
 						} else {
-							fmt.Println("ERROR: No se pudo asignar la particion")
+							messages += "ERROR: No se pudo asignar la particion" + "\n"
 						}
 					} else {
-						fmt.Println("ERROR: Se exedió el numero de particiones permitidas")
+						messages += "ERROR: Se exedió el numero de particiones permitidas" + "\n"
 					}
 				} else {
-					fmt.Println("ERROR: Se exedió el numero de particiones extendidas permitidas")
+					messages += "ERROR: Se exedió el numero de particiones extendidas permitidas"
 				}
 			} else if p.Part_type == 'l' {
 				if numExtPart(m) > 0 {
@@ -624,23 +629,23 @@ func CreatePart(path string, p Structs.Partition) bool {
 					e.Part_s = p.Part_s
 					copy(e.Part_name[:], p.Part_name[:])
 					if chooseExtFit(path, p.Part_fit, &e) {
-						fmt.Println("Particion logica creada correctamente")
+						messages += "Particion logica creada correctamente" + "\n"
 						ep := GetExtPart(path)
 						Structs.ReadEBRs(path, ep, string(p.Part_name[:]))
 					} else {
-						fmt.Println("ERROR: No se pudo asignar la particion logica")
+						messages += "ERROR: No se pudo asignar la particion logica" + "\n"
 					}
 				} else {
-					fmt.Println("ERROR: No se puede crear una particion logica si no existe una extendida")
+					messages += "ERROR: No se puede crear una particion logica si no existe una extendida" + "\n"
 				}
 			}
 		} else {
-			fmt.Println("ERROR: Ya existe una particion con el nombre \"" + string(p.Part_name[:]) + "\"")
+			messages += "ERROR: Ya existe una particion con el nombre \"" + string(p.Part_name[:]) + "\"" + "\n"
 		}
 	} else {
-		fmt.Println("ERROR: el disco \"" + Tools.GetFileName(path) + "\" no existe")
+		messages += "ERROR: el disco \"" + Tools.GetFileName(path) + "\" no existe" + "\n"
 	}
-	return false
+	return false, messages
 }
 
 func updatePart(m *Structs.MBR, p Structs.Partition, name string) {
@@ -718,7 +723,8 @@ func GetDiskMtd(id string) Structs.MountedDisk {
 	return Structs.MountedDisk{}
 }
 
-func MountDisk(path string, name string) bool {
+func MountDisk(path string, name string) (bool, string) {
+	messages := ""
 	if Tools.Exists(path) {
 		if partExists(path, name) {
 			md := Structs.MountedDisk{Path: path, Name: name, Id: getIdMtdDisk(path, name)}
@@ -736,15 +742,15 @@ func MountDisk(path string, name string) bool {
 					Structs.AddEBR(path, e.Part_start, e)
 				}
 			}
-			fmt.Println("Particion montada correctamente")
-			return true
+			messages += "Particion montada correctamente" + "\n"
+			return true, messages
 		} else {
-			fmt.Println("ERROR: La particion \"" + name + "\" no existe")
+			messages += "ERROR: La particion \"" + name + "\" no existe" + "\n"
 		}
 	} else {
-		fmt.Println("ERROR: el disco \"" + Tools.GetFileName(path) + "\" no existe")
+		messages += "ERROR: el disco \"" + Tools.GetFileName(path) + "\" no existe" + "\n"
 	}
-	return false
+	return false, messages
 }
 
 func fillSpace(path string, start int, end int) bool {
@@ -807,7 +813,8 @@ func addBmpInodeNBlock(path string, start int32, tam int32) bool {
 	return true
 }
 
-func MakeFileSystem(id string) bool {
+func MakeFileSystem(id string) (bool, string) {
+	messages := ""
 	if IdExists(id) {
 		md := GetDiskMtd(id)
 		m := Structs.GetMBR(md.Path)
@@ -833,12 +840,12 @@ func MakeFileSystem(id string) bool {
 					Structs.AddSuperBlock(md.Path, p.Part_start, sb)
 					//Añado el bitmap de inodos y de bloques
 					addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_structs)
-					return true
+					return true, messages
 				} else {
-					fmt.Println("ERROR: No se pudo formatear el espacio de la particion")
+					messages += "ERROR: No se pudo formatear el espacio de la particion" + "\n"
 				}
 			} else {
-				fmt.Println("ERROR: Algo salii mal")
+				messages += "ERROR: Algo salii mal" + "\n"
 			}
 		} else if IsLogPart(md.Path, md.Name) {
 			e := GetLogPartByName(md.Path, md.Name)
@@ -859,16 +866,16 @@ func MakeFileSystem(id string) bool {
 					Structs.AddSuperBlock(md.Path, e.Part_start+int32(unsafe.Sizeof(Structs.EBR{}))+1, sb)
 					//Añado el bitmap de inodos y de bloques
 					addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_struct)
-					return true
+					return true, messages
 				} else {
-					fmt.Println("ERROR: No se pudo formatear el espacio de la particion")
+					messages += "ERROR: No se pudo formatear el espacio de la particion" + "\n"
 				}
 			} else {
-				fmt.Println("ERROR: Algo salio mal")
+				messages += "ERROR: Algo salio mal" + "\n"
 			}
 		}
 	} else {
-		fmt.Println("ERROR: No existe una particion montada con el id \"" + id + "\"")
+		messages += "ERROR: No existe una particion montada con el id \"" + id + "\"" + "\n"
 	}
-	return false
+	return false, messages
 }

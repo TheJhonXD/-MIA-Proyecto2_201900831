@@ -1,17 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"os"
-	"strings"
+	"net/http"
 
-	cmd "pack/packages/Commands"
-	Tools "pack/packages/Tools"
+	"pack/server"
+
+	"github.com/gorilla/mux"
 )
 
-func analyzer(s string) {
+/* func analyzer(s string) {
 	if s[0] != '#' {
 		s = Tools.DeleteComments(s)
 		s = strings.Trim(s, " ")
@@ -54,9 +53,9 @@ func analyzer(s string) {
 	} else {
 		fmt.Println("ERROR: el comando \"" + cmds[0] + "\" no es valido.")
 	}
-}
+} */
 
-func readFile(path string) {
+/* func readFile(path string) {
 	if Tools.Exists(path) {
 		//Abrir el archivo
 		myfile, err := os.Open(path)
@@ -83,9 +82,9 @@ func readFile(path string) {
 	} else {
 		fmt.Println("El archivo no existe")
 	}
-}
+} */
 
-func main() {
+/* func main() {
 	//Preparar el scanner para leer la entrada
 	reader := bufio.NewScanner(os.Stdin)
 	fmt.Println("************* ⍟ Consola ⍟ *************")
@@ -111,4 +110,16 @@ func main() {
 			break
 		}
 	}
+} */
+
+func main() {
+	router := mux.NewRouter().StrictSlash(true)
+	router.Use(server.CorsMiddleware)
+	router.HandleFunc("/", server.Index)
+	router.HandleFunc("/text", server.Inputs)
+	router.HandleFunc("/graph", server.Graph)
+	fmt.Println("*****************************************************************")
+	fmt.Println("*\n*\tServidor corriendo en http://localhost:3000/ \t\t*")
+	fmt.Println("*\n*****************************************************************")
+	log.Fatal(http.ListenAndServe(":3000", router))
 }

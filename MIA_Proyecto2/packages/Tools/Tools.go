@@ -1,7 +1,6 @@
 package Tools
 
 import (
-	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -50,17 +49,18 @@ func GetFileExt(p string) string {
 }
 
 // Crea los directorios de la ruta ingresada si no existen
-func CreateDir(path string) bool {
+func CreateDir(path string) (bool, string) {
+	messages := ""
 	if !Exists(GetPath(path)) {
 		// fmt.Println(GetPath(path))
 		if err := os.MkdirAll(path, 0777); err == nil {
-			fmt.Println("Directorio creado")
+			messages += "Directorio creado" + "\n"
 		} else {
-			fmt.Println("ERROR: No se pudo crear el directorio")
-			return false
+			messages += "ERROR: No se pudo crear el directorio" + "\n"
+			return false, messages
 		}
 	}
-	return true
+	return true, messages
 }
 
 func GetPercentage(size float64, disk_size float64) int {

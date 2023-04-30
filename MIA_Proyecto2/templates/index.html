@@ -36,28 +36,42 @@
                 <div class="title">Login</div>
                 <form action="">
                     <div class="container-items">
-                        <input type="text" name="" id="" placeholder="ID Particion">
+                        <input type="text" name="" id="id-part" placeholder="ID Particion">
                     </div>
                     <div class="container-items">
-                        <input type="text" name="" id="" placeholder="User">
+                        <input type="text" name="" id="user-name" placeholder="User">
                     </div>
                     <div class="container-items">
-                        <input type="text" name="" id="" placeholder="Password">
+                        <input type="text" name="" id="pass" placeholder="Password">
                     </div>
-                    <button>Ingresar</button>
+                    <button id="btn-ingresar">Ingresar</button>
                 </form>
             </div>
         </section>
         <section class="reports-page" id="report-page" style="display: none;">
             <div class="title">Reportes</div>
-            <div class="reports">
-                <div class="thumb">
-                    <img src="" alt="">
+            <div class="container-reports">
+                <div class="container-btn-reports">
+                    <button id="btn-graficar">Graficar</button>
+                    <select name="graphs" id="graphs">
+                        <option value="graph-disk">Disk</option>
+                        <option value="graph-tree">Tree</option>
+                        <option value="graph-file">File</option>
+                        <option value="graph-sb">SuperBlock</option>
+                    </select>
+                </div>
+                <div class="reports" id="reports">
+                    <div class="thumb" id="thumb">
+    
+                    </div>
                 </div>
             </div>
         </section>
     </main>
     <footer>TJX - 201900831</footer>
+    <script src="https://d3js.org/d3.v5.js"></script>
+    <script src="https://unpkg.com/@hpcc-js/wasm@0.3.13/dist/index.min.js"></script>
+    <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
     <script src="script.js"></script>
 </body>
