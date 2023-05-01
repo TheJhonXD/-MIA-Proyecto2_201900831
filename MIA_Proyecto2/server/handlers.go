@@ -72,7 +72,7 @@ func analyzer(s string) string {
 		fmt.Println("-------------------------------------------------------------")
 	} else if strings.ToLower(cmds[0]) == "mkfs" {
 		fmt.Println("»» " + s)
-		cmd.MKFS(cmds)
+		messages += cmd.MKFS(cmds)
 		fmt.Println("-------------------------------------------------------------")
 	} else if strings.ToLower(cmds[0]) == "rep" {
 		fmt.Println("»» " + s)

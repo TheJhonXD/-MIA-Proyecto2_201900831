@@ -125,9 +125,8 @@ type FileBlock struct {
 }
 
 type Group struct {
-	GID  int32
-	Type byte
-	Grp  [10]byte
+	GID int32
+	Grp [10]byte
 }
 
 type User struct {
@@ -159,7 +158,7 @@ func RSBV() SuperBlock {
 // Reset Inode Variable
 // Limpia la variable Inodo o inicializa en 0
 func RIV() Inodo {
-	return Inodo{-1, -1, -1, Time{-1, -1, -1, -1, -1, -1}, Time{-1, -1, -1, -1, -1, -1}, Time{-1, -1, -1, -1, -1, -1}, [16]byte(bytes.Repeat([]byte("-1"), 16)), 0, -1}
+	return Inodo{-1, -1, -1, Time{-1, -1, -1, -1, -1, -1}, Time{-1, -1, -1, -1, -1, -1}, Time{-1, -1, -1, -1, -1, -1}, [16]byte(bytes.Repeat([]byte("0"), 16)), 0, -1}
 }
 
 // Reset FolderBlock Variable
@@ -353,7 +352,7 @@ func GetSuperBlock(path string, start int32) SuperBlock {
 		fmt.Println("ERROR: ", err)
 	}
 
-	_, err = myfile.Seek(0, 0)
+	_, err = myfile.Seek(int64(start), 0)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
@@ -366,6 +365,10 @@ func GetSuperBlock(path string, start int32) SuperBlock {
 	myfile.Close()
 	return sb
 }
+
+/* func ReadSuperBlock(path string, start int32) {
+
+} */
 
 // Añade el Inodo a una partición especifica
 // Recibe la ruta del disco, la posicion donde se empezara a escribir, y el inodo
@@ -395,7 +398,7 @@ func GetInodo(path string, start int32) Inodo {
 		fmt.Println("ERROR: ", err)
 	}
 
-	_, err = myfile.Seek(0, 0)
+	_, err = myfile.Seek(int64(start), 0)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
@@ -437,7 +440,7 @@ func GetFolderBlock(path string, start int32) FolderBlock {
 		fmt.Println("ERROR: ", err)
 	}
 
-	_, err = myfile.Seek(0, 0)
+	_, err = myfile.Seek(int64(start), 0)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
@@ -479,7 +482,7 @@ func GetFileBlock(path string, start int32) FileBlock {
 		fmt.Println("ERROR: ", err)
 	}
 
-	_, err = myfile.Seek(0, 0)
+	_, err = myfile.Seek(int64(start), 0)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}

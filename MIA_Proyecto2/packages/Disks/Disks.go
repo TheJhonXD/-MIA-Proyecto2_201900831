@@ -133,13 +133,13 @@ func IsLogPart(path string, name string) bool {
 
 func GetPartByName(path string, name string) Structs.Partition {
 	m := Structs.GetMBR(path)
-	if string(m.Mbr_partition_1.Part_name[:]) == name {
+	if strings.TrimRight(string(m.Mbr_partition_1.Part_name[:]), "\x00") == name {
 		return m.Mbr_partition_1
-	} else if string(m.Mbr_partition_2.Part_name[:]) == name {
+	} else if strings.TrimRight(string(m.Mbr_partition_2.Part_name[:]), "\x00") == name {
 		return m.Mbr_partition_2
-	} else if string(m.Mbr_partition_3.Part_name[:]) == name {
+	} else if strings.TrimRight(string(m.Mbr_partition_3.Part_name[:]), "\x00") == name {
 		return m.Mbr_partition_3
-	} else if string(m.Mbr_partition_4.Part_name[:]) == name {
+	} else if strings.TrimRight(string(m.Mbr_partition_4.Part_name[:]), "\x00") == name {
 		return m.Mbr_partition_4
 	}
 	return Structs.RPV()
@@ -152,7 +152,7 @@ func GetLogPartByName(path string, name string) Structs.EBR {
 		if start.Part_next > 0 {
 			actual := Structs.GetEBR(path, start.Part_next)
 			for actual.Part_next != -1 {
-				if string(actual.Part_name[:]) == name {
+				if strings.TrimRight(string(actual.Part_name[:]), "\x00") == name {
 					return actual
 				}
 				actual = Structs.GetEBR(path, actual.Part_next)
@@ -765,7 +765,7 @@ func fillSpace(path string, start int, end int) bool {
 	}
 
 	/* Lleno el archivo con caracteres nulos para simular el tamaño */
-	var buffer byte = '\000'
+	var buffer byte = '0'
 	for i := 0; i < end; i++ {
 		err = binary.Write(myfile, binary.LittleEndian, &buffer)
 		if err != nil {
@@ -819,31 +819,29 @@ func MakeFileSystem(id string) (bool, string) {
 		md := GetDiskMtd(id)
 		m := Structs.GetMBR(md.Path)
 		/* Realizo el formateo de la particion */
-		if IsPrimPart(m, md.Name) || IsExtPart(m, md.Name) {
+		if IsPrimPart(m, md.Name) {
 			p := GetPartByName(md.Path, md.Name)
+			fmt.Println("START:", p.Part_start)
+			fmt.Println("SIZE:", p.Part_s)
 			if p.Part_start > 0 {
-				if fillSpace(md.Path, int(p.Part_start), int(p.Part_s)) {
-					sb := Structs.RSBV()
-					sb.S_inode_size = int32(unsafe.Sizeof(Structs.Inodo{}))
-					sb.S_block_size = int32(unsafe.Sizeof(Structs.FolderBlock{}))
-					/* Agrego las estructuras */
-					num_structs := Structs.GetMaxNumStructExt2(p.Part_s)
-					//Inicio del bitmap de inodos
-					sb.S_bm_inode_start = p.Part_start + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
-					//Inicio del bitmap de bloques
-					sb.S_bm_block_start = sb.S_bm_inode_start + int32(num_structs) + 1
-					//Inicio de la tabla de inodos
-					sb.S_inode_start = sb.S_bm_block_start + int32(3*num_structs) + 1
-					//Inicio de la tabla de bloques
-					sb.S_block_start = sb.S_inode_start + int32(num_structs*int32(unsafe.Sizeof(Structs.Inodo{}))) + 1
-					/* Agrego el super bloque */
-					Structs.AddSuperBlock(md.Path, p.Part_start, sb)
-					//Añado el bitmap de inodos y de bloques
-					addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_structs)
-					return true, messages
-				} else {
-					messages += "ERROR: No se pudo formatear el espacio de la particion" + "\n"
-				}
+				sb := Structs.RSBV()
+				sb.S_inode_size = int32(unsafe.Sizeof(Structs.Inodo{}))
+				sb.S_block_size = int32(unsafe.Sizeof(Structs.FolderBlock{}))
+				/* Agrego las estructuras */
+				num_structs := Structs.GetMaxNumStructExt2(p.Part_s)
+				//Inicio del bitmap de inodos
+				sb.S_bm_inode_start = p.Part_start + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
+				//Inicio del bitmap de bloques
+				sb.S_bm_block_start = sb.S_bm_inode_start + int32(num_structs) + 1
+				//Inicio de la tabla de inodos
+				sb.S_inode_start = sb.S_bm_block_start + int32(3*num_structs) + 1
+				//Inicio de la tabla de bloques
+				sb.S_block_start = sb.S_inode_start + int32(num_structs*int32(unsafe.Sizeof(Structs.Inodo{}))) + 1
+				/* Agrego el super bloque */
+				Structs.AddSuperBlock(md.Path, p.Part_start, sb)
+				//Añado el bitmap de inodos y de bloques
+				addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_structs)
+				return true, messages
 			} else {
 				messages += "ERROR: Algo salii mal" + "\n"
 			}
