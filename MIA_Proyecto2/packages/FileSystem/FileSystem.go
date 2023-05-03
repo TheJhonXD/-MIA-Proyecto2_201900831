@@ -12,6 +12,9 @@ import (
 	"unsafe"
 )
 
+var userLogged Structs.User = Structs.RUV()
+var userLoggedID string = "-1"
+
 func createInode(uid int32, gid int32, size int32, tipo int32) Structs.Inodo {
 	i := Structs.RIV()
 	i.I_uid = 0
@@ -240,6 +243,74 @@ func joinTextFileBlock(path string, start int32, inodo Structs.Inodo) string {
 	return text
 }
 
+func addGrp(path string, start int32, grp Structs.Group) {
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	err = binary.Write(myfile, binary.LittleEndian, &grp)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+}
+
+func addUsr(path string, start int32, usr Structs.User) {
+	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	err = binary.Write(myfile, binary.LittleEndian, &usr)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	myfile.Close()
+}
+
+// Ponerlo en el bitmap de inodos
+func createGrp(path string, name string, gid int32, tipo byte, grp [10]byte) bool {
+	// start := getPartStart(path, name) + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
+	inicio := getPartStart(path, name)
+	sb := Structs.GetSuperBlock(path, inicio)
+	grupo := Structs.Group{GID: gid, Type: tipo, Grp: grp}
+	start := sb.S_bm_inode_start
+	if sb.S_inodes_count > 0 {
+		start += sb.S_inodes_count*int32(unsafe.Sizeof(Structs.Group{})) + 1
+	}
+	addGrp(path, start, grupo)
+	sb.S_inodes_count += 1
+	Structs.AddSuperBlock(path, inicio, sb)
+	return true
+}
+
+// Ponerlo en el bitmap de bloques
+func createUsr(path string, name string, uid int32, tipo byte, grp [10]byte, usr [10]byte, pwd [10]byte) bool {
+	// start := getPartStart(path, name) + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
+	inicio := getPartStart(path, name)
+	sb := Structs.GetSuperBlock(path, inicio)
+	usuario := Structs.User{UID: uid, Type: tipo, Grp: grp, Usr: usr, Pwd: pwd}
+	start := sb.S_bm_block_start
+	if sb.S_blocks_count > 0 {
+		start += sb.S_blocks_count*int32(unsafe.Sizeof(Structs.User{})) + 1
+	}
+	addUsr(path, start, usuario)
+	sb.S_blocks_count += 1
+	Structs.AddSuperBlock(path, inicio, sb)
+	return true
+}
+
 func addTextToFileBlocks(path string, start int32, matrix [][64]byte, inodo Structs.Inodo) {
 	// sb := Structs.GetSuperBlock(path, start)
 	var fb Structs.FileBlock
@@ -296,4 +367,289 @@ func CreateUsersFile(id string) bool {
 	grp := Structs.Group{GID: 1, Grp: myarr}
 	createGroup(md.Path, start, grp, i)
 	return true
+}
+
+func getNxtIdGrp(path string, name string) int32 {
+	start := getPartStart(path, name)
+	sb := Structs.GetSuperBlock(path, start)
+	return sb.S_inodes_count + 1
+}
+
+func getNxtIdUsr(path string, name string) int32 {
+	start := getPartStart(path, name)
+	sb := Structs.GetSuperBlock(path, start)
+	return sb.S_blocks_count + 1
+}
+
+func InitGrpNUsr(id string) bool {
+	md := Disks.GetDiskMtd(id)
+	createGrp(md.Path, md.Name, getNxtIdGrp(md.Path, md.Name), 'G', [10]byte{'r', 'o', 'o', 't'})
+	createUsr(md.Path, md.Name, getNxtIdUsr(md.Path, md.Name), 'U', [10]byte{'r', 'o', 'o', 't'}, [10]byte{'r', 'o', 'o', 't'}, [10]byte{'1', '2', '3'})
+	return true
+}
+
+func userExists(usr string, id string) bool {
+	md := Disks.GetDiskMtd(id)
+	start := getPartStart(md.Path, md.Name)
+	sb := Structs.GetSuperBlock(md.Path, start)
+
+	myfile, err := os.OpenFile(md.Path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(sb.S_bm_block_start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var usuario Structs.User
+	for i := 0; i < int(sb.S_blocks_count); i++ {
+		err = binary.Write(myfile, binary.LittleEndian, &usuario)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		if strings.TrimRight(string(usuario.Usr[:]), "\x00") == usr {
+			myfile.Close()
+			return true
+		}
+	}
+	myfile.Close()
+	return false
+}
+
+func getUser(usr string, id string) (Structs.User, int) {
+	md := Disks.GetDiskMtd(id)
+	start := getPartStart(md.Path, md.Name)
+	sb := Structs.GetSuperBlock(md.Path, start)
+	pos := 0
+	myfile, err := os.OpenFile(md.Path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(sb.S_bm_block_start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var usuario Structs.User
+	for i := 0; i < int(sb.S_blocks_count); i++ {
+		err = binary.Write(myfile, binary.LittleEndian, &usuario)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		if strings.TrimRight(string(usuario.Usr[:]), "\x00") == usr {
+			pos = i
+			break
+		}
+	}
+	myfile.Close()
+	return usuario, pos
+}
+
+func Login(usr string, pwd string, id string) bool {
+	if userExists(usr, id) {
+		if userLogged.UID == -1 {
+			userLogged, _ = getUser(usr, id)
+			userLoggedID = id
+			fmt.Println("Se ha iniciado sesion")
+			return true
+		} else {
+			fmt.Println("Ya hay un usuario logueado")
+		}
+	} else {
+		fmt.Println("El usuario no existe")
+	}
+	return false
+}
+
+func Logout() bool {
+	if userLogged.UID != -1 {
+		userLogged = Structs.RUV()
+		userLoggedID = "-1"
+		fmt.Println("Se ha cerrado sesion")
+		return true
+	} else {
+		fmt.Println("No hay un usuario logueado")
+	}
+	return false
+}
+
+func groupExists(grp string, id string) bool {
+	md := Disks.GetDiskMtd(id)
+	start := getPartStart(md.Path, md.Name)
+	sb := Structs.GetSuperBlock(md.Path, start)
+
+	myfile, err := os.OpenFile(md.Path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(sb.S_bm_inode_start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var grupo Structs.Group
+	for i := 0; i < int(sb.S_inodes_count); i++ {
+		err = binary.Write(myfile, binary.LittleEndian, &grupo)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		if strings.TrimRight(string(grupo.Grp[:]), "\x00") == grp {
+			myfile.Close()
+			return true
+		}
+	}
+	myfile.Close()
+	return false
+}
+
+func getGroup(grp string, id string) (Structs.Group, int) {
+	md := Disks.GetDiskMtd(id)
+	start := getPartStart(md.Path, md.Name)
+	sb := Structs.GetSuperBlock(md.Path, start)
+	pos := 0
+	myfile, err := os.OpenFile(md.Path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	_, err = myfile.Seek(int64(sb.S_bm_inode_start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var grupo Structs.Group
+	for i := 0; i < int(sb.S_inodes_count); i++ {
+		err = binary.Write(myfile, binary.LittleEndian, &grupo)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		if strings.TrimRight(string(grupo.Grp[:]), "\x00") == grp {
+			pos = i
+			break
+		}
+	}
+	myfile.Close()
+	return grupo, pos
+}
+
+func RemoveGroup(grp string) (bool, string) {
+	messages := ""
+	if userLogged.UID != -1 {
+		if strings.TrimRight(string(userLogged.Usr[:]), "\x00") == "root" {
+			if groupExists(grp, userLoggedID) {
+				md := Disks.GetDiskMtd(userLoggedID)
+				start := getPartStart(md.Path, md.Name)
+				sb := Structs.GetSuperBlock(md.Path, start)
+				grupo, pos := getGroup(grp, userLoggedID)
+				inicio := sb.S_bm_inode_start
+				//!posiblemente estos condicionales lo arruinen
+				if pos > 0 {
+					inicio += (int32(pos) * int32(unsafe.Sizeof(Structs.Group{}))) + 1
+				}
+				grupo.GID = 0
+				addGrp(md.Path, int32(inicio), grupo)
+				messages += "Se ha eliminado el grupo satisfactoriamente" + "\n"
+				return true, messages
+			} else {
+				messages += "El grupo no existe" + "\n"
+			}
+		} else {
+			messages += "El usuario loggeado no tiene permisos para crear grupos" + "\n"
+		}
+	} else {
+		messages += "No hay un usuario logueado" + "\n"
+	}
+	return false, messages
+}
+
+func MakeGroup(grp string) (bool, string) {
+	messages := ""
+	if userLogged.UID != -1 {
+		if strings.TrimRight(string(userLogged.Usr[:]), "\x00") == "root" {
+			if !groupExists(grp, userLoggedID) {
+				md := Disks.GetDiskMtd(userLoggedID)
+				var grupo [10]byte
+				copy(grupo[:], grp)
+				createGrp(md.Path, md.Name, getNxtIdGrp(md.Path, md.Name), 'G', grupo)
+				messages += "Se ha creado el grupo satisfactoriamente" + "\n"
+				return true, messages
+			} else {
+				messages += "El grupo ya existe"
+			}
+		} else {
+			messages += "El usuario loggeado no tiene permisos para crear grupos" + "\n"
+		}
+	} else {
+		messages += "No hay un usuario logueado" + "\n"
+	}
+	return false, messages
+}
+
+func MakeUser(usr string, pwd string, grp string) (bool, string) {
+	messages := ""
+	if userLogged.UID != -1 {
+		if strings.TrimRight(string(userLogged.Usr[:]), "\x00") == "root" {
+			if !userExists(usr, userLoggedID) {
+				if groupExists(grp, userLoggedID) {
+					md := Disks.GetDiskMtd(userLoggedID)
+					var usuario [10]byte
+					copy(usuario[:], usr)
+					var password [10]byte
+					copy(password[:], pwd)
+					var grupo [10]byte
+					copy(grupo[:], grp)
+					createUsr(md.Path, md.Name, getNxtIdUsr(md.Path, md.Name), 'U', usuario, password, grupo)
+					messages += "Se ha creado el usuario satisfactoriamente" + "\n"
+					return true, messages
+				} else {
+					messages += "El grupo no existe" + "\n"
+				}
+			} else {
+				messages += "El usuario ya existe" + "\n"
+			}
+		} else {
+			messages += "El usuario loggeado no tiene permisos para crear usuarios" + "\n"
+		}
+	} else {
+		messages += "No hay un usuario logueado" + "\n"
+	}
+	return false, messages
+}
+
+func RemoveUser(usr string) (bool, string) {
+	messages := ""
+	if userLogged.UID != -1 {
+		if strings.TrimRight(string(userLogged.Usr[:]), "\x00") == "root" {
+			if userExists(usr, userLoggedID) {
+				md := Disks.GetDiskMtd(userLoggedID)
+				start := getPartStart(md.Path, md.Name)
+				sb := Structs.GetSuperBlock(md.Path, start)
+				usuario, pos := getUser(usr, userLoggedID)
+				inicio := sb.S_bm_block_start
+				//!posiblemente estos condicionales lo arruinen
+				if pos > 0 {
+					inicio += (int32(pos) * int32(unsafe.Sizeof(Structs.User{}))) + 1
+				}
+				usuario.UID = 0
+				addUsr(md.Path, int32(inicio), usuario)
+				messages += "Se ha eliminado el usuario satisfactoriamente" + "\n"
+				return true, messages
+			} else {
+				messages += "El usuario no existe" + "\n"
+			}
+		} else {
+			messages += "El usuario loggeado no tiene permisos para eliminar usuarios" + "\n"
+		}
+	} else {
+		messages += "No hay un usuario logueado" + "\n"
+	}
+	return false, messages
 }

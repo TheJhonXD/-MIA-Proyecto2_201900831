@@ -125,8 +125,9 @@ type FileBlock struct {
 }
 
 type Group struct {
-	GID int32
-	Grp [10]byte
+	GID  int32
+	Type byte
+	Grp  [10]byte
 }
 
 type User struct {
@@ -166,6 +167,12 @@ func RIV() Inodo {
 func RFBV() FolderBlock {
 	c := Content{[12]byte(bytes.Repeat([]byte("-1"), 12)), -1}
 	return FolderBlock{[4]Content{c, c, c, c}}
+}
+
+// Reset User Variable
+// Limpia la variable User o inicializa en 0
+func RUV() User {
+	return User{-1, 0, [10]byte(bytes.Repeat([]byte("0"), 10)), [10]byte(bytes.Repeat([]byte("0"), 10)), [10]byte(bytes.Repeat([]byte("0"), 10))}
 }
 
 // Añade el MBR a un disco especificado

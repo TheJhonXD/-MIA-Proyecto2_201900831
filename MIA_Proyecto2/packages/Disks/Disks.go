@@ -825,6 +825,9 @@ func MakeFileSystem(id string) (bool, string) {
 			fmt.Println("SIZE:", p.Part_s)
 			if p.Part_start > 0 {
 				sb := Structs.RSBV()
+				sb.S_blocks_count = 0
+				sb.S_inodes_count = 0
+				sb.S_mtime.SetTime()
 				sb.S_inode_size = int32(unsafe.Sizeof(Structs.Inodo{}))
 				sb.S_block_size = int32(unsafe.Sizeof(Structs.FolderBlock{}))
 				/* Agrego las estructuras */
@@ -851,6 +854,9 @@ func MakeFileSystem(id string) (bool, string) {
 				if fillSpace(md.Path, int(e.Part_start), int(e.Part_s)) {
 					/* Agrego las estructuras */
 					sb := Structs.RSBV()
+					sb.S_blocks_count = 0
+					sb.S_inodes_count = 0
+					sb.S_mtime.SetTime()
 					num_struct := Structs.GetMaxNumStructExt2(e.Part_s)
 					//Inicio del bitmap de inodos
 					sb.S_bm_inode_start = e.Part_start + int32(unsafe.Sizeof(Structs.EBR{})) + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1

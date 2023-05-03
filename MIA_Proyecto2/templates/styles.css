@@ -196,6 +196,14 @@ nav .menu li:hover{
     background: #0d95e1;;
 }
 
+.login .logout{
+    background: #f3683e;
+}
+
+.login .logout:hover{
+    background: #f35627;
+}
+
 /* REPORTS */
 .container-reports{
     width: 100%;
@@ -239,7 +247,7 @@ nav .menu li:hover{
 
 .reports{
     width: 98%;
-    height: 400px;
+    height: 450px;
     max-width: 100%;
     min-width: 100%;
     min-height: 400px;

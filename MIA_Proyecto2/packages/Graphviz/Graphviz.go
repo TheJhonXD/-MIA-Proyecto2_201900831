@@ -148,7 +148,7 @@ func getTableSBInfo(id string) string {
 	graph += createRowSBRpt("sb_detalle_directorio_free", "0")
 	graph += createRowSBRpt("sb_inodos_free", strconv.Itoa(int(sb.S_free_inodes_count)))
 	graph += createRowSBRpt("sb_bloques_free", strconv.Itoa(int(sb.S_free_blocks_count)))
-	fecha := strconv.Itoa(int(sb.S_mtime.Year)) + "-" + strconv.Itoa(int(sb.S_mtime.Month)) + "-" + strconv.Itoa(int(sb.S_mtime.Day)) + " " + strconv.Itoa(int(sb.S_mtime.Hour)) + ":" + strconv.Itoa(int(sb.S_mtime.Min)) + ":" + strconv.Itoa(int(sb.S_mtime.Sec))
+	fecha := strconv.Itoa(int(sb.S_mtime.Year)) + "-0" + strconv.Itoa(int(sb.S_mtime.Month)) + "-" + strconv.Itoa(int(sb.S_mtime.Day)) + " " + strconv.Itoa(int(sb.S_mtime.Hour)) + ":" + strconv.Itoa(int(sb.S_mtime.Min)) + ":" + strconv.Itoa(int(sb.S_mtime.Sec))
 	graph += createRowSBRpt("sb_date_creacion", fecha)
 	fecha = strconv.Itoa(int(sb.S_mtime.Year)) + "-" + strconv.Itoa(int(sb.S_mtime.Month)) + "-" + strconv.Itoa(int(sb.S_mtime.Day)) + " " + strconv.Itoa(int(sb.S_mtime.Hour)) + ":" + strconv.Itoa(int(sb.S_mtime.Min)) + ":" + strconv.Itoa(int(sb.S_mtime.Sec))
 	// fecha = string(sb.S_mtime.Year) + "-" + string(sb.S_mtime.Month) + "-" + string(sb.S_mtime.Day) + " " + string(sb.S_mtime.Hour) + ":" + string(sb.S_mtime.Min) + ":" + string(sb.S_mtime.Sec)

@@ -3,6 +3,7 @@ package Commands
 import (
 	"fmt"
 	Disks "pack/packages/Disks"
+	Filesystem "pack/packages/FileSystem"
 	"pack/packages/Structs"
 	"strconv"
 	"strings"
@@ -20,6 +21,9 @@ type PDM struct {
 	id   string
 	ruta string
 	fs   string
+	usr  string
+	pwd  string
+	grp  string
 }
 
 func (p *PDM) ResetPDM() {
@@ -34,6 +38,9 @@ func (p *PDM) ResetPDM() {
 	p.id = "-1"
 	p.ruta = "-1"
 	p.fs = "-1"
+	p.usr = "-1"
+	p.pwd = "-1"
+	p.grp = "-1"
 }
 
 var pdm PDM
@@ -285,10 +292,124 @@ func MKFS(params []string) string {
 		flag, message := Disks.MakeFileSystem(pdm.id)
 		messages += message
 		if flag {
-			fmt.Println("Falta añadir users")
-			//!Añadir root
+			fmt.Println("Usuario y Grupo Root creado")
+			Filesystem.InitGrpNUsr(pdm.id)
 		}
 	}
+	return messages
+}
+
+func LOGIN(params []string) {
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">user" {
+			pdm.usr = strings.Trim(param[1], "\"")
+		} else if strings.ToLower(param[0]) == ">pwd" {
+			pdm.pwd = strings.Trim(param[1], "\"")
+		} else if strings.ToLower(param[0]) == ">id" {
+			pdm.id = strings.ToLower(param[1])
+		} else {
+			fmt.Println("ERROR: el parametro \"" + param[0] + "\" no es valido.")
+		}
+	}
+
+	if check_param_id() && pdm.usr != "-1" && pdm.pwd != "-1" {
+		Filesystem.Login(pdm.usr, pdm.pwd, pdm.id)
+	}
+}
+
+func LOGOUT() {
+	pdm.ResetPDM()
+	Filesystem.Logout()
+}
+
+func MKGRP(params []string) string {
+	messages := ""
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">name" {
+			pdm.name = strings.Trim(param[1], "\"")
+		} else {
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
+		}
+	}
+
+	if check_param_name() {
+		_, message := Filesystem.MakeGroup(pdm.name)
+		messages += message
+	}
+
+	return messages
+}
+
+func RMGRP(params []string) string {
+	messages := ""
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">name" {
+			pdm.name = strings.Trim(param[1], "\"")
+		} else {
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
+		}
+	}
+
+	if check_param_name() {
+		_, message := Filesystem.RemoveGroup(pdm.name)
+		messages += message
+	}
+
+	return messages
+}
+
+func MKUSR(params []string) string {
+	messages := ""
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">user" {
+			pdm.usr = strings.Trim(param[1], "\"")
+		} else if strings.ToLower(param[0]) == ">pwd" {
+			pdm.pwd = strings.Trim(param[1], "\"")
+		} else if strings.ToLower(param[0]) == ">grp" {
+			pdm.grp = strings.Trim(param[1], "\"")
+		} else {
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
+		}
+	}
+
+	if pdm.usr != "-1" && pdm.pwd != "-1" && pdm.grp != "-1" {
+		_, message := Filesystem.MakeUser(pdm.usr, pdm.pwd, pdm.grp)
+		messages += message
+	}
+
+	return messages
+}
+
+func RMUSR(params []string) string {
+	messages := ""
+	pdm.ResetPDM()
+	var param []string
+	for i := 1; i < len(params); i++ {
+		param = strings.Split(params[i], "=")
+		if strings.ToLower(param[0]) == ">user" {
+			pdm.usr = strings.Trim(param[1], "\"")
+		} else {
+			messages += "ERROR: el parametro \"" + param[0] + "\" no es valido." + "\n"
+		}
+	}
+	//!Falta poner lo de los usuarios en el analyzer
+	if pdm.usr != "-1" {
+		_, message := Filesystem.RemoveUser(pdm.usr)
+		messages += message
+	}
+
 	return messages
 }
 
