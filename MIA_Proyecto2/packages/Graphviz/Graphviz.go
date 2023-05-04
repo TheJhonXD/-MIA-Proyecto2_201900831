@@ -262,7 +262,7 @@ func createInodeTreeRpt(uid string, gid string, fecha string, tipo string, conte
 	graphFB := ""
 	unirNodo := ""
 	c := contenido
-	fmt.Println("CADENA:", c)
+	// fmt.Println("CADENA:", c)
 	for i := 0; i < 16; i++ {
 		if len(c) >= 64 {
 			graph += createRowTreeRpt("Ap"+strconv.Itoa(i), strconv.Itoa(i+1), "fb"+strconv.Itoa(i))
