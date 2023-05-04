@@ -118,6 +118,8 @@ func main() {
 	router.HandleFunc("/", server.Index)
 	router.HandleFunc("/text", server.Inputs)
 	router.HandleFunc("/graph", server.Graph)
+	router.HandleFunc("/login", server.UserLogin)
+	router.HandleFunc("/logout", server.UserLogout)
 	fmt.Println("*****************************************************************")
 	fmt.Println("*\n*\tServidor corriendo en http://localhost:3000/ \t\t*")
 	fmt.Println("*\n*****************************************************************")

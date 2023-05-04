@@ -138,6 +138,12 @@ type User struct {
 	Pwd  [10]byte
 }
 
+type Login struct {
+	Usr string `json:"user"`
+	Pwd string `json:"password"`
+	Id  string `json:"id"`
+}
+
 // Reset Partition Variable
 // Limpia la variable de tipo Partition o inicializa
 func RPV() Partition {
@@ -373,9 +379,30 @@ func GetSuperBlock(path string, start int32) SuperBlock {
 	return sb
 }
 
-/* func ReadSuperBlock(path string, start int32) {
+func ReadSuperBlock(path string, start int32) {
+	myfile, err := os.OpenFile(path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
 
-} */
+	_, err = myfile.Seek(int64(start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	var sb SuperBlock
+	err = binary.Read(myfile, binary.LittleEndian, &sb)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+	fmt.Println("Inodes count: ", sb.S_inodes_count)
+	fmt.Println("Blocks count: ", sb.S_blocks_count)
+	fmt.Println("Inode Size: ", sb.S_inode_size)
+	fmt.Println("Block Size: ", sb.S_block_size)
+	fmt.Println("Bitmap Inodes: ", sb.S_bm_inode_start)
+	fmt.Println("Bitmap Blocks: ", sb.S_bm_block_start)
+	myfile.Close()
+}
 
 // Añade el Inodo a una partición especifica
 // Recibe la ruta del disco, la posicion donde se empezara a escribir, y el inodo

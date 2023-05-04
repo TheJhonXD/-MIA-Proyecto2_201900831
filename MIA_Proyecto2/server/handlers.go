@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	cmd "pack/packages/Commands"
+	Filesystem "pack/packages/FileSystem"
 	"pack/packages/Graphviz"
 	"pack/packages/Structs"
 	"pack/packages/Tools"
@@ -52,28 +53,52 @@ func analyzer(s string) string {
 	cmds := Tools.Split(s)
 
 	if strings.ToLower(cmds[0]) == "mkdisk" {
-		fmt.Println("»» " + s)
+		messages += "»» " + s + "\n"
 		messages += cmd.MKDISK(cmds)
-		fmt.Println("-------------------------------------------------------------")
+		messages += "-------------------------------------------------------------" + "\n"
 	} else if strings.ToLower(cmds[0]) == "rmdisk" {
-		fmt.Println("»» " + s)
+		messages += "»» " + s + "\n"
 		messages += cmd.RMDISK(cmds)
-		fmt.Println("-------------------------------------------------------------")
+		messages += "-------------------------------------------------------------" + "\n"
 	} else if strings.ToLower(cmds[0]) == "fdisk" {
-		fmt.Println("»» " + s)
+		messages += "»» " + s + "\n"
 		messages += cmd.FDISK(cmds)
-		fmt.Println("-------------------------------------------------------------")
+		messages += "-------------------------------------------------------------" + "\n"
 	} else if strings.ToLower(cmds[0]) == "mount" {
-		fmt.Println("»» " + s)
+		messages += "»» " + s + "\n"
 		messages += cmd.MOUNT(cmds)
-		fmt.Println("-------------------------------------------------------------")
+		messages += "-------------------------------------------------------------" + "\n"
 	} else if strings.ToLower(cmds[0]) == "unmount" {
-		fmt.Println("»» " + s)
-		fmt.Println("-------------------------------------------------------------")
+		messages += "»» " + s + "\n"
+		messages += "-------------------------------------------------------------" + "\n"
 	} else if strings.ToLower(cmds[0]) == "mkfs" {
-		fmt.Println("»» " + s)
+		messages += "»» " + s + "\n"
 		messages += cmd.MKFS(cmds)
-		fmt.Println("-------------------------------------------------------------")
+		messages += "-------------------------------------------------------------" + "\n"
+	} else if strings.ToLower(cmds[0]) == "login" {
+		messages += "»» " + s + "\n"
+		// messages += cmd.MKFS(cmds)
+		messages += "-------------------------------------------------------------" + "\n"
+	} else if strings.ToLower(cmds[0]) == "logout" {
+		messages += "»» " + s + "\n"
+		// messages += cmd.MKFS(cmds)
+		messages += "-------------------------------------------------------------" + "\n"
+	} else if strings.ToLower(cmds[0]) == "mkgrp" {
+		messages += "»» " + s + "\n"
+		messages += cmd.MKGRP(cmds)
+		messages += "-------------------------------------------------------------" + "\n"
+	} else if strings.ToLower(cmds[0]) == "rmgrp" {
+		messages += "»» " + s + "\n"
+		messages += cmd.RMGRP(cmds)
+		messages += "-------------------------------------------------------------" + "\n"
+	} else if strings.ToLower(cmds[0]) == "mkusr" {
+		messages += "»» " + s + "\n"
+		messages += cmd.MKUSR(cmds)
+		messages += "-------------------------------------------------------------" + "\n"
+	} else if strings.ToLower(cmds[0]) == "rmusr" {
+		messages += "»» " + s + "\n"
+		messages += cmd.RMUSR(cmds)
+		messages += "-------------------------------------------------------------" + "\n"
 	} else if strings.ToLower(cmds[0]) == "rep" {
 		fmt.Println("»» " + s)
 		messages += cmd.REP(cmds)
@@ -85,6 +110,7 @@ func analyzer(s string) string {
 	} else if s[0] == '#' {
 		messages += s + "\n"
 	} else if len(s) == 0 {
+		messages += "" + "\n"
 		fmt.Println("")
 	} else {
 		messages += "ERROR: el comando \"" + cmds[0] + "\" no es valido." + "\n"
@@ -133,9 +159,43 @@ func Graph(w http.ResponseWriter, r *http.Request) {
 		res.Message = Graphviz.GetDiskGraph(response.Id)
 	} else if response.Name == "graph-sb" {
 		res.Message = Graphviz.CreateSBReport(response.Id)
+	} else if response.Name == "graph-file" {
+		res.Message = Filesystem.UsersReport(response.Id)
 	} else {
 		fmt.Println("No se encontro el id")
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(res)
+}
+
+func UserLogin(w http.ResponseWriter, r *http.Request) {
+	response := Structs.Login{}
+	res := Structs.Response{}
+	err := json.NewDecoder(r.Body).Decode(&response)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "%v", err)
+		return
+	}
+	_, message := Filesystem.Login(response.Usr, response.Pwd, response.Id)
+	res.Message = message
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(res)
+}
+
+func UserLogout(w http.ResponseWriter, r *http.Request) {
+	// response := Structs.Login{}
+	res := Structs.Response{}
+	// err := json.NewDecoder(r.Body).Decode(&response)
+	/* if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "%v", err)
+		return
+	} */
+	_, message := Filesystem.Logout()
+	res.Message = message
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(res)

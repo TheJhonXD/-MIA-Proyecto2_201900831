@@ -292,7 +292,7 @@ func MKFS(params []string) string {
 		flag, message := Disks.MakeFileSystem(pdm.id)
 		messages += message
 		if flag {
-			fmt.Println("Usuario y Grupo Root creado")
+			messages += "Usuario y Grupo Root creado" + "\n"
 			Filesystem.InitGrpNUsr(pdm.id)
 		}
 	}

@@ -20,6 +20,7 @@ func CreateDisk(path string, tam int) (bool, string) {
 	if !Tools.Exists(path) {
 		//Creo los directorios si no existen
 		flag, message := Tools.CreateDir(path)
+		messages += message
 		if flag {
 			myfile, err := os.Create(path)
 			if err != nil {
@@ -35,7 +36,6 @@ func CreateDisk(path string, tam int) (bool, string) {
 			messages += "Disco creado exitosamente" + "\n"
 			return true, messages
 		}
-		messages += message
 	} else {
 		messages += "El disco \"" + Tools.GetFileName(path) + "\" ya existe" + "\n"
 	}
@@ -142,6 +142,7 @@ func GetPartByName(path string, name string) Structs.Partition {
 	} else if strings.TrimRight(string(m.Mbr_partition_4.Part_name[:]), "\x00") == name {
 		return m.Mbr_partition_4
 	}
+	fmt.Println("EEEEEEEEEEEEEEEEEEEEEEEEEFFFFFFFFFFFFFFFFFFFFFFFFFFEEEEEEEEEEEEEEEEEEE")
 	return Structs.RPV()
 }
 
@@ -157,7 +158,7 @@ func GetLogPartByName(path string, name string) Structs.EBR {
 				}
 				actual = Structs.GetEBR(path, actual.Part_next)
 			}
-			if string(actual.Part_name[:]) == name {
+			if strings.TrimRight(string(actual.Part_name[:]), "\x00") == name {
 				return actual
 			}
 		}
@@ -758,13 +759,12 @@ func fillSpace(path string, start int, end int) bool {
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
-	// defer myfile.Close()
+
 	_, err = myfile.Seek(int64(start), 0)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 	}
 
-	/* Lleno el archivo con caracteres nulos para simular el tamaño */
 	var buffer byte = '0'
 	for i := 0; i < end; i++ {
 		err = binary.Write(myfile, binary.LittleEndian, &buffer)
@@ -785,34 +785,35 @@ func IdExists(id string) bool {
 	return false
 }
 
-func addBmpInodeNBlock(path string, start int32, tam int32) bool {
-	bmi := make([]byte, tam)
-	bmb := make([]byte, 3*tam)
+/*
+	 func addBmpInodeNBlock(path string, start int32, tam int32) bool {
+		bmi := make([]byte, tam)
+		bmb := make([]byte, 3*tam)
 
-	myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-	}
+		myfile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
 
-	_, err = myfile.Seek(int64(start), 0)
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-	}
+		_, err = myfile.Seek(int64(start), 0)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
 
-	err = binary.Write(myfile, binary.LittleEndian, &bmi)
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-		return false
+		err = binary.Write(myfile, binary.LittleEndian, &bmi)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+			return false
+		}
+		err = binary.Write(myfile, binary.LittleEndian, &bmb)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+			return false
+		}
+		myfile.Close()
+		return true
 	}
-	err = binary.Write(myfile, binary.LittleEndian, &bmb)
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-		return false
-	}
-	myfile.Close()
-	return true
-}
-
+*/
 func MakeFileSystem(id string) (bool, string) {
 	messages := ""
 	if IdExists(id) {
@@ -824,6 +825,7 @@ func MakeFileSystem(id string) (bool, string) {
 			fmt.Println("START:", p.Part_start)
 			fmt.Println("SIZE:", p.Part_s)
 			if p.Part_start > 0 {
+				// fillSpace(md.Path, int(p.Part_start), int(p.Part_s))
 				sb := Structs.RSBV()
 				sb.S_blocks_count = 0
 				sb.S_inodes_count = 0
@@ -831,7 +833,7 @@ func MakeFileSystem(id string) (bool, string) {
 				sb.S_inode_size = int32(unsafe.Sizeof(Structs.Inodo{}))
 				sb.S_block_size = int32(unsafe.Sizeof(Structs.FolderBlock{}))
 				/* Agrego las estructuras */
-				num_structs := Structs.GetMaxNumStructExt2(p.Part_s)
+				num_structs := p.Part_s / 2
 				//Inicio del bitmap de inodos
 				sb.S_bm_inode_start = p.Part_start + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
 				//Inicio del bitmap de bloques
@@ -843,7 +845,9 @@ func MakeFileSystem(id string) (bool, string) {
 				/* Agrego el super bloque */
 				Structs.AddSuperBlock(md.Path, p.Part_start, sb)
 				//Añado el bitmap de inodos y de bloques
-				addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_structs)
+				// addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_structs)
+				// Structs.ReadSuperBlock(md.Path, p.Part_start)
+				messages += "Se formateo la particion correctamente" + "\n"
 				return true, messages
 			} else {
 				messages += "ERROR: Algo salii mal" + "\n"
@@ -851,29 +855,28 @@ func MakeFileSystem(id string) (bool, string) {
 		} else if IsLogPart(md.Path, md.Name) {
 			e := GetLogPartByName(md.Path, md.Name)
 			if e.Part_start > 0 {
-				if fillSpace(md.Path, int(e.Part_start), int(e.Part_s)) {
-					/* Agrego las estructuras */
-					sb := Structs.RSBV()
-					sb.S_blocks_count = 0
-					sb.S_inodes_count = 0
-					sb.S_mtime.SetTime()
-					num_struct := Structs.GetMaxNumStructExt2(e.Part_s)
-					//Inicio del bitmap de inodos
-					sb.S_bm_inode_start = e.Part_start + int32(unsafe.Sizeof(Structs.EBR{})) + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
-					//Inicio del bitmap de bloques
-					sb.S_bm_block_start = sb.S_bm_inode_start + int32(num_struct) + 1
-					//Inicio de la tabla de inodos
-					sb.S_inode_start = sb.S_bm_block_start + int32(3*num_struct) + 1
-					//Inicio de la tabla de bloques
-					sb.S_block_start = sb.S_inode_start + int32(num_struct*int32(unsafe.Sizeof(Structs.Inodo{}))) + 1
-					/* Agrego el super bloque */
-					Structs.AddSuperBlock(md.Path, e.Part_start+int32(unsafe.Sizeof(Structs.EBR{}))+1, sb)
-					//Añado el bitmap de inodos y de bloques
-					addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_struct)
-					return true, messages
-				} else {
-					messages += "ERROR: No se pudo formatear el espacio de la particion" + "\n"
-				}
+				// fillSpace(md.Path, int(e.Part_start+int32(unsafe.Sizeof(Structs.EBR{}))), int(e.Part_s))
+				/* Agrego las estructuras */
+				sb := Structs.RSBV()
+				sb.S_blocks_count = 0
+				sb.S_inodes_count = 0
+				sb.S_mtime.SetTime()
+				num_struct := Structs.GetMaxNumStructExt2(e.Part_s)
+				//Inicio del bitmap de inodos
+				sb.S_bm_inode_start = e.Part_start + int32(unsafe.Sizeof(Structs.EBR{})) + int32(unsafe.Sizeof(Structs.SuperBlock{})) + 1
+				//Inicio del bitmap de bloques
+				sb.S_bm_block_start = sb.S_bm_inode_start + int32(num_struct) + 1
+				//Inicio de la tabla de inodos
+				sb.S_inode_start = sb.S_bm_block_start + int32(3*num_struct) + 1
+				//Inicio de la tabla de bloques
+				sb.S_block_start = sb.S_inode_start + int32(num_struct*int32(unsafe.Sizeof(Structs.Inodo{}))) + 1
+				/* Agrego el super bloque */
+				Structs.AddSuperBlock(md.Path, e.Part_start+int32(unsafe.Sizeof(Structs.EBR{}))+1, sb)
+				//Añado el bitmap de inodos y de bloques
+				//addBmpInodeNBlock(md.Path, sb.S_bm_inode_start, num_struct)
+				// Structs.ReadSuperBlock(md.Path, e.Part_start+int32(unsafe.Sizeof(Structs.EBR{}))+1)
+				messages += "Se formateo la particion correctamente" + "\n"
+				return true, messages
 			} else {
 				messages += "ERROR: Algo salio mal" + "\n"
 			}

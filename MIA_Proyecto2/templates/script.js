@@ -7,9 +7,11 @@ $(document).ready(function(){
     btnMenuLogin = document.querySelector('#btn-menu-login')
     btnMenuReport = document.querySelector('#btn-menu-reports')
     btnLogin = document.querySelector('#btn-ingresar')
+    btnLogout = document.querySelector('#btn-logout')
     btnEjecutar = document.querySelector('#execute')
     btnGraph = document.querySelector('#btn-graficar')
     selectGraph = document.querySelector('#graphs')
+    resultFile = document.querySelector('#reporteFile')
 
 
     function readFile(file, callback){
@@ -69,12 +71,51 @@ $(document).ready(function(){
         .catch(error => console.error(error));
     });
 
-    btnLogin.addEventListener('click', (e) => {
+    btnLogin.addEventListener('click', async (e) => {
         e.preventDefault();
-        sessionStorage.setItem('user', $('#user-name').val());
-        sessionStorage.setItem('id', $('#id-part').val());
-        alert(`"${sessionStorage.getItem('user')} a iniciado sesion."`)
+
+        let data = {
+            "user": $('#user-name').val(),
+            "password": $('#pass').val(),
+            "id": $('#id-part').val()
+        }
+
+        await fetch('http://localhost:3000/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al hacer la solicitud');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // console.log(data)
+            sessionStorage.setItem('user', $('#user-name').val());
+            sessionStorage.setItem('id', $('#id-part').val());
+            alert(`${data.message}`)
+        })
+        .catch(error => console.error(error));
     });
+
+    btnLogout.addEventListener('click', async () =>{
+        await fetch('http://localhost:3000/logout')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al hacer la solicitud');
+            }
+            return response.json();
+        })
+        .then(data => {
+            sessionStorage.clear();
+            alert(`${data.message}`)
+        })
+        .catch(error => console.error(error));
+    })
 
 
     btnGraph.addEventListener('click', async () => {
@@ -97,9 +138,13 @@ $(document).ready(function(){
         })
         .then(data => {
             console.log(data.message);
-            d3.select("#thumb").graphviz({useWorker: false})
-            .fade(false)
-            .renderDot(data.message);
+            if (selectGraph.value != "graph-file"){
+                d3.select("#thumb").graphviz({useWorker: false})
+                .fade(false)
+                .renderDot(data.message);
+            }else{
+                $('#rFile').html(data.message)
+            }
             console.log("OK");
         })
         .catch(error => console.error(error));
