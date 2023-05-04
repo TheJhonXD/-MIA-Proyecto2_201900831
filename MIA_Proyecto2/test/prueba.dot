@@ -1,0 +1,30 @@
+digraph H {
+
+  parent [
+   shape=plaintext
+   label=<
+     <table border='0' cellborder='1' cellspacing="0" bgcolor="aqua">
+       <tr><td colspan="2">INODO 0</td></tr>
+       <tr><td port='port_one'>UID</td><td port='port_two'>1</td></tr>
+       <tr><td>GID</td><td>1</td></tr>
+       <tr><td>Fecha creacion</td><td>25/08/2016 15:15</td></tr>
+       <tr><td>Tipo</td><td>1</td></tr>
+       <tr><td>Size</td><td>0</td></tr>
+       <tr><td>Ap1</td><td>0</td></tr>
+     </table>
+  >];
+
+  child_two [
+   shape=plaintext
+   label=<
+     <table border="0" cellborder="1" cellspacing="0">
+       <tr><td colspan="2">Bloque 0</td></tr>
+       <tr><td port='port_one'>.</td><td port='port_two'>0</td></tr>
+       <tr><td port='port_one'>..</td><td port='port_two'>0</td></tr>
+       <tr><td port='port_one'></td><td port='port_two'>-1</td></tr>
+     </table>
+  >];
+
+  parent:port_two   -> child_two;
+    rankdir=LR;
+}

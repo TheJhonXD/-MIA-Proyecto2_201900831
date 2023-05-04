@@ -3,6 +3,7 @@ package Graphviz
 import (
 	"fmt"
 	"pack/packages/Disks"
+	Filesystem "pack/packages/FileSystem"
 	"pack/packages/Structs"
 	"pack/packages/Tools"
 	"strconv"
@@ -200,4 +201,143 @@ func CreateSBReport(id string) string {
 		fmt.Println("ERROR: La particion no está montada")
 	}
 	return text
+}
+
+func createRowTreeRpt(param string, valor string, port string) string {
+	graph := "<tr><td>" + param + "</td><td port='" + port + "'>" + valor + "</td></tr>"
+
+	return graph
+}
+
+func createFileBlockTreeRpt(id string, valor string, port string) string {
+	graph := "fileblock" + id + " [shape=plaintext label=< <table border='0' cellborder='1' cellspacing='0' bgcolor='lightcoral'>\n\t<tr><td port='" + port + "'>Bloque " + id + "</td></tr>\n\t"
+	graph += "<tr><td>" + valor + "</td></tr>"
+	graph += "</table> >];"
+
+	return graph
+}
+
+func createInodeRootTreeRpt(fecha string) string {
+	graph := "root [shape=plaintext label=< <table border='0' cellborder='1' cellspacing='0' bgcolor='lightblue'>\n\t<tr><td colspan='2'>INODO 0</td></tr>\n\t"
+	graph += createRowTreeRpt("UID", "1", "")
+	graph += createRowTreeRpt("GID", "1", "")
+	graph += createRowTreeRpt("Fecha creacion", fecha, "")
+	graph += createRowTreeRpt("Tipo", "1", "")
+	graph += createRowTreeRpt("Size", "0", "")
+	graph += createRowTreeRpt("Ap0", "0", "f0")
+	graph += createRowTreeRpt("Ap1", "-1", "")
+	graph += createRowTreeRpt("Ap2", "-1", "")
+	graph += createRowTreeRpt("Ap3", "-1", "")
+	graph += createRowTreeRpt("Ap4", "-1", "")
+	graph += createRowTreeRpt("Ap5", "-1", "")
+	graph += createRowTreeRpt("Ap6", "-1", "")
+	graph += createRowTreeRpt("Ap7", "-1", "")
+	graph += createRowTreeRpt("Ap8", "-1", "")
+	graph += createRowTreeRpt("Ap9", "-1", "")
+	graph += createRowTreeRpt("Ap10", "-1", "")
+	graph += createRowTreeRpt("Ap11", "-1", "")
+	graph += createRowTreeRpt("Ap12", "-1", "")
+	graph += createRowTreeRpt("Ap13", "-1", "")
+	graph += createRowTreeRpt("Ap14", "-1", "")
+	graph += createRowTreeRpt("Ap15", "-1", "")
+
+	graph += "</table> >];"
+	return graph
+}
+
+func unirNodePort(nodo1 string, nodo2 string, port1 string, port2 string) string {
+	text := ""
+	text += nodo1 + ":" + port1 + " -> " + nodo2 + ":" + port2 + ";\n"
+	return text
+}
+
+func createInodeTreeRpt(uid string, gid string, fecha string, tipo string, contenido string) (string, string, string) {
+	graph := "inodeUser [shape=plaintext label=< <table border='0' cellborder='1' cellspacing='0' bgcolor='lightblue'>\n\t<tr><td port='b1' colspan='2'>INODO 0</td></tr>\n\t"
+	graph += createRowTreeRpt("UID", uid, "")
+	graph += createRowTreeRpt("GID", gid, "")
+	graph += createRowTreeRpt("Fecha creacion", fecha, "")
+	graph += createRowTreeRpt("Tipo", tipo, "")
+	graph += createRowTreeRpt("Size", strconv.Itoa(len(contenido))+" bytes", "")
+	// tam := int(math.Round(float64(len(contenido)) / float64(64)))
+	graphFB := ""
+	unirNodo := ""
+	c := contenido
+	fmt.Println("CADENA:", c)
+	for i := 0; i < 16; i++ {
+		if len(c) >= 64 {
+			graph += createRowTreeRpt("Ap"+strconv.Itoa(i), strconv.Itoa(i+1), "fb"+strconv.Itoa(i))
+			graphFB += createFileBlockTreeRpt(strconv.Itoa(i+1), c[:64], "fb"+strconv.Itoa(i))
+			unirNodo += unirNodePort("inodeUser", "fileblock"+strconv.Itoa(i+1), "fb"+strconv.Itoa(i), "fb"+strconv.Itoa(i))
+			c = c[64:]
+		} else if len(c) > 0 {
+			graph += createRowTreeRpt("Ap"+strconv.Itoa(i), strconv.Itoa(i+1), "fb"+strconv.Itoa(i))
+			graphFB += createFileBlockTreeRpt(strconv.Itoa(i+1), c, "fb"+strconv.Itoa(i))
+			unirNodo += unirNodePort("inodeUser", "fileblock"+strconv.Itoa(i+1), "fb"+strconv.Itoa(i), "fb"+strconv.Itoa(i))
+			c = ""
+		} else {
+			graph += createRowTreeRpt("Ap"+strconv.Itoa(i), "-1", "")
+		}
+	}
+
+	/* graph += createRowTreeRpt("Ap0", "-1", "fb0")
+	graph += createRowTreeRpt("Ap1", "-1", "fb1")
+	graph += createRowTreeRpt("Ap2", "-1", "fb2")
+	graph += createRowTreeRpt("Ap3", "-1", "fb3")
+	graph += createRowTreeRpt("Ap4", "-1", "fb4")
+	graph += createRowTreeRpt("Ap5", "-1", "fb5")
+	graph += createRowTreeRpt("Ap6", "-1", "fb6")
+	graph += createRowTreeRpt("Ap7", "-1", "fb7")
+	graph += createRowTreeRpt("Ap8", "-1", "fb8")
+	graph += createRowTreeRpt("Ap9", "-1", "fb9")
+	graph += createRowTreeRpt("Ap10", "-1", "fb10")
+	graph += createRowTreeRpt("Ap11", "-1", "fb11")
+	graph += createRowTreeRpt("Ap12", "-1", "fb12")
+	graph += createRowTreeRpt("Ap13", "-1", "fb13")
+	graph += createRowTreeRpt("Ap14", "-1", "fb14")
+	graph += createRowTreeRpt("Ap15", "-1", "fb15") */
+
+	graph += "</table> >];"
+	return graph, graphFB, unirNodo
+}
+
+func createFolderBlockRootTreeRpt() string {
+	graph := "folderblock1 [shape=plaintext label=< <table border='0' cellborder='1' cellspacing='0' bgcolor='lightcoral'>\n\t<tr><td port='b0' colspan='2'>Bloque 0</td></tr>\n\t"
+	graph += createRowTreeRpt(".", "0", "")
+	graph += createRowTreeRpt("..", "0", "")
+	graph += createRowTreeRpt("users.txt", "8", "f1")
+	graph += createRowTreeRpt("", "-1", "")
+	graph += "</table> >];"
+
+	return graph
+}
+
+func CreateTreeReport(id string) string {
+	md := Disks.GetDiskMtd(id)
+	m := Structs.GetMBR(md.Path)
+	sb := Structs.RSBV()
+
+	if Disks.IsPrimPart(m, md.Name) || Disks.IsExtPart(m, md.Name) {
+		p := Disks.GetPartByName(md.Path, md.Name)
+		sb = Structs.GetSuperBlock(md.Path, p.Part_start)
+	} else if Disks.IsLogPart(md.Path, md.Name) {
+		e := Disks.GetLogPartByName(md.Path, md.Name)
+		sb = Structs.GetSuperBlock(md.Path, e.Part_start+int32(unsafe.Sizeof(Structs.EBR{}))+1)
+	}
+
+	grupos := Filesystem.GetAllGroupsGraph(id)
+	usuarios := Filesystem.GetAllUsersGraph(id)
+
+	graph := "digraph G {\n"
+	fecha := strconv.Itoa(int(sb.S_mtime.Year)) + "/" + strconv.Itoa(int(sb.S_mtime.Month)) + "/" + strconv.Itoa(int(sb.S_mtime.Day)) + " " + strconv.Itoa(int(sb.S_mtime.Hour)) + ":" + strconv.Itoa(int(sb.S_mtime.Min)) + ":" + strconv.Itoa(int(sb.S_mtime.Sec))
+	graph += createInodeRootTreeRpt(fecha)
+	graph += createFolderBlockRootTreeRpt()
+	graphAux, graphFB, unirNodo := createInodeTreeRpt("1", "1", fecha, "0", grupos+usuarios)
+	graph += graphAux
+	graph += "\n\troot:f0   -> folderblock1:b0\n"
+	graph += "\n\tfolderblock1:f1  -> inodeUser:b1\n"
+	graph += graphFB
+	graph += unirNodo
+	graph += "\n\trankdir=LR;\n}"
+
+	return graph
 }

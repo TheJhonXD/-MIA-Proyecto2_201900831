@@ -161,6 +161,8 @@ func Graph(w http.ResponseWriter, r *http.Request) {
 		res.Message = Graphviz.CreateSBReport(response.Id)
 	} else if response.Name == "graph-file" {
 		res.Message = Filesystem.UsersReport(response.Id)
+	} else if response.Name == "graph-tree" {
+		res.Message = Graphviz.CreateTreeReport(response.Id)
 	} else {
 		fmt.Println("No se encontro el id")
 	}

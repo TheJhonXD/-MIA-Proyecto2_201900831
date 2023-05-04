@@ -1,17 +1,19 @@
 $(document).ready(function(){
-    inputPath = document.querySelector('#inputPath');
-    myfile = document.querySelector('#myfile');
-    editor = document.querySelector('#editor');
-    result = document.querySelector('#result');
-    btnMenuMain = document.querySelector('#btn-menu-main')
-    btnMenuLogin = document.querySelector('#btn-menu-login')
-    btnMenuReport = document.querySelector('#btn-menu-reports')
-    btnLogin = document.querySelector('#btn-ingresar')
-    btnLogout = document.querySelector('#btn-logout')
-    btnEjecutar = document.querySelector('#execute')
-    btnGraph = document.querySelector('#btn-graficar')
-    selectGraph = document.querySelector('#graphs')
-    resultFile = document.querySelector('#reporteFile')
+    let inputPath = document.querySelector('#inputPath');
+    let myfile = document.querySelector('#myfile');
+    let editor = document.querySelector('#editor');
+    let result = document.querySelector('#result');
+    let btnMenuMain = document.querySelector('#btn-menu-main')
+    let btnMenuLogin = document.querySelector('#btn-menu-login')
+    let btnMenuReport = document.querySelector('#btn-menu-reports')
+    let btnLogin = document.querySelector('#btn-ingresar')
+    let btnLogout = document.querySelector('#btn-logout')
+    let btnEjecutar = document.querySelector('#execute')
+    let btnGraph = document.querySelector('#btn-graficar')
+    let selectGraph = document.querySelector('#graphs')
+    let resultFile = document.querySelector('#reporteFile')
+    let hostAPI = "http://localhost:3000"
+
 
 
     function readFile(file, callback){
@@ -51,7 +53,7 @@ $(document).ready(function(){
             "message": `${editor.value}`
         }
 
-        await fetch('http://localhost:3000/text', {
+        await fetch(`${hostAPI}/text`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -80,7 +82,7 @@ $(document).ready(function(){
             "id": $('#id-part').val()
         }
 
-        await fetch('http://localhost:3000/login', {
+        await fetch(`${hostAPI}/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -103,7 +105,7 @@ $(document).ready(function(){
     });
 
     btnLogout.addEventListener('click', async () =>{
-        await fetch('http://localhost:3000/logout')
+        await fetch(`${hostAPI}/logout`)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Error al hacer la solicitud');
@@ -123,7 +125,7 @@ $(document).ready(function(){
             "name": selectGraph.value,
             "id": sessionStorage.getItem('id')
         }
-        await fetch('http://localhost:3000/graph', {
+        await fetch(`${hostAPI}/graph`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

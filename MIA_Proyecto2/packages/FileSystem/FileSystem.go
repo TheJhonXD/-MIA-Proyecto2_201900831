@@ -494,6 +494,39 @@ func getAllUsers(id string) string {
 	return allUsers
 }
 
+func GetAllUsersGraph(id string) string {
+	allUsers := ""
+	md := Disks.GetDiskMtd(id)
+	start := getPartStart(md.Path, md.Name)
+	sb := Structs.GetSuperBlock(md.Path, start)
+
+	myfile, err := os.OpenFile(md.Path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	/* _, err = myfile.Seek(int64(sb.S_bm_block_start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	} */
+
+	var usuario Structs.User
+	for i := 0; i < int(sb.S_blocks_count); i++ {
+		if i > 0 {
+			myfile.Seek(int64(sb.S_bm_block_start+(int32(i)*int32(unsafe.Sizeof(Structs.User{})))+1), 0)
+		} else {
+			myfile.Seek(int64(sb.S_bm_block_start), 0)
+		}
+		err = binary.Read(myfile, binary.LittleEndian, &usuario)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+		allUsers += strconv.Itoa(int(usuario.UID)) + " " + string(usuario.Type) + " " + strings.Replace(string(usuario.Grp[:]), "\x00", " ", -1) + " " + strings.Replace(string(usuario.Usr[:]), "\x00", " ", -1) + " " + strings.Replace(string(usuario.Pwd[:]), "\x00", " ", -1) + "\\n"
+	}
+	myfile.Close()
+	return allUsers
+}
+
 func getAllGroups(id string) string {
 	allGroups := ""
 	md := Disks.GetDiskMtd(id)
@@ -522,6 +555,39 @@ func getAllGroups(id string) string {
 		}
 
 		allGroups += strconv.Itoa(int(grupo.GID)) + ", " + string(grupo.Type) + ", " + strings.Replace(string(grupo.Grp[:]), "\x00", " ", -1) + "\\n" + "\n"
+	}
+	myfile.Close()
+	return allGroups
+}
+
+func GetAllGroupsGraph(id string) string {
+	allGroups := ""
+	md := Disks.GetDiskMtd(id)
+	start := getPartStart(md.Path, md.Name)
+	sb := Structs.GetSuperBlock(md.Path, start)
+	myfile, err := os.OpenFile(md.Path, os.O_RDONLY, 0666)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	}
+
+	/* _, err = myfile.Seek(int64(sb.S_bm_inode_start), 0)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+	} */
+
+	var grupo Structs.Group
+	for i := 0; i < int(sb.S_inodes_count); i++ {
+		if i > 0 {
+			myfile.Seek(int64(sb.S_bm_inode_start+(int32(i)*int32(unsafe.Sizeof(Structs.Group{})))+1), 0)
+		} else {
+			myfile.Seek(int64(sb.S_bm_inode_start), 0)
+		}
+		err = binary.Read(myfile, binary.LittleEndian, &grupo)
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		allGroups += strconv.Itoa(int(grupo.GID)) + " " + string(grupo.Type) + " " + strings.Replace(string(grupo.Grp[:]), "\x00", " ", -1) + "\\n"
 	}
 	myfile.Close()
 	return allGroups

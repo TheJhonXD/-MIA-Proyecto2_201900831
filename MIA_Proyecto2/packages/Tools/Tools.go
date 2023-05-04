@@ -53,7 +53,7 @@ func CreateDir(path string) (bool, string) {
 	messages := ""
 	if !Exists(GetPath(path)) {
 		// fmt.Println(GetPath(path))
-		if err := os.MkdirAll(path, 0777); err == nil {
+		if err := os.MkdirAll(GetPath(path), 0777); err == nil {
 			messages += "Directorio creado" + "\n"
 		} else {
 			messages += "ERROR: No se pudo crear el directorio" + "\n"
