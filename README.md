@@ -1,6 +1,26 @@
 # Proyecto de Manejo e Implementación de Archivos
 
-Este proyecto implementa una aplicación para la administración de archivos y particiones utilizando comandos específicos. A continuación, se describen los comandos disponibles.
+Este proyecto implementa una aplicación para la administración de archivos y particiones utilizando comandos específicos. A continuación, se muestra la interfaz y se describen los comandos disponibles.
+
+## Interfaz
+
+### Pagina principal
+
+Carga de archivo con la lista de comandos o entrada manual.
+
+![Interfaz principal](/img/interfaz_principal.png)
+
+### Login
+
+Inicia la sesión de un usuario en el disco montado en la partición determinada.
+
+![Login y logout](/img/login.png)
+
+### Reportes
+
+Genera el reporte que se solicite de la lista de reportes disponibles.
+
+![Reportes](/img//reportes.png)
 
 ## Comandos
 
@@ -381,23 +401,3 @@ rep >id=<id_partición> >path=<ruta_reporte> >name=<nombre_reporte> [>ruta=<ruta
 ```bash
 rep >id=061Disco1 >path=/home/user/reports/reporte1.jpg >name=mbr
 ```
-
-## Interfaz
-
-### Pagina principal
-
-Carga de archivo con la lista de comandos o entrada manual.
-
-![Interfaz principal](/img/interfaz_principal.png)
-
-### Login
-
-Inicia la sesión de un usuario en el disco montado en la partición determinada.
-
-![Login y logout](/img/login.png)
-
-### Reportes
-
-Genera el reporte que se solicite de la lista de reportes disponibles.
-
-![Reportes](/img//reportes.png)
