@@ -1,6 +1,6 @@
 # Proyecto de Manejo e Implementación de Archivos
 
-Este proyecto implementa una aplicación de consola para la administración de archivos y particiones utilizando comandos específicos. A continuación, se describen los comandos disponibles.
+Este proyecto implementa una aplicación administración de archivos y particiones utilizando comandos específicos. A continuación, se describen los comandos disponibles.
 
 ## Comandos
 
